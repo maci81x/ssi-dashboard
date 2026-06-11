@@ -422,6 +422,16 @@ tr.tot td{background:#e8f0fb;font-weight:700;color:var(--navy)}
 .agent-kpis{display:flex;gap:10px;flex-wrap:wrap}
 .kpi-pill{background:#f0f4f8;border-radius:6px;padding:3px 8px;font-size:11px;color:var(--dgrey)}
 .kpi-pill strong{color:var(--navy)}
+.chips-wrap{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.chip{padding:6px 14px;border-radius:20px;cursor:pointer;font-size:12px;font-weight:600;border:2px solid;transition:all .15s;user-select:none}
+.rank-row{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+.rank-num{width:18px;font-size:11px;color:var(--dgrey);text-align:right;flex-shrink:0}
+.rank-name{width:140px;font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;flex-shrink:0}
+.rank-bar{height:18px;border-radius:3px;min-width:4px}
+.rank-val{font-size:11px;color:var(--dgrey);min-width:82px}
+.hm-cell{padding:5px 8px;text-align:right;font-size:11px;font-weight:500;white-space:nowrap}
+.hm-legend{display:flex;gap:16px;font-size:11px;margin-bottom:10px;flex-wrap:wrap}
+.hm-swatch{width:14px;height:14px;border-radius:3px;flex-shrink:0;display:inline-block}
 </style>
 </head>
 <body id="artifacts-component-root-html">
@@ -442,6 +452,9 @@ tr.tot td{background:#e8f0fb;font-weight:700;color:var(--navy)}
   <div class="tab" onclick="showPage('confronto')">Confronto mesi</div>
   <div class="tab" onclick="showPage('mix')">Mix venduto</div>
   <div class="tab" onclick="showPage('tabelle')">Tabelle dati</div>
+  <div class="tab" onclick="showPage('multiagente')">Multi-Agente</div>
+  <div class="tab" onclick="showPage('analisi')">Analisi avanzata</div>
+  <div class="tab" onclick="showPage('heatmap')">Heatmap</div>
 </div>
 
 <!-- PANORAMICA -->
@@ -688,7 +701,7 @@ const DATA={
     'Roberto Macinai':[27302.91,36254.6,29558.81,24587.53,29230.67,3555.4,null,null,null,null,null,null],
     'Massimo Necci':[35693.91,27934.84,24134.83,32834.17,61270.14,15863.35,null,null,null,null,null,null],
     'Giovanna Panti':[45718.08,34567.15,27931.23,44167.14,26935.97,6308.95,null,null,null,null,null,null],
-    'Marco Macinai':[27474.33,35007.37,23954.19,33253.34,9202.8,2854.8,null,null,null,null,null,null],
+    'Marco Macinai':[27474.33,35007.37,23954.19,33253.34,38110.94,2854.8,null,null,null,null,null,null],
     'Mattia Guardiani':[2139.09,0,2173.08,658.8,3927.01,0,null,null,null,null,null,null],
     'Davide Gaziano':[9003.37,3524.8,4312.92,11204.46,10642.72,2492.69,null,null,null,null,null,null],
     'Francesco Pelliccia':[183,0,1760,1546.47,9202.8,2854.8,null,null,null,null,null,null],
@@ -935,19 +948,6 @@ function renderTabella(){
   }).join('');
 }
 
-// ── NAV ───────────────────────────────────────────────────────────────────
-function showPage(id){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  document.querySelectorAll('.tab').forEach(t=>{if(t.getAttribute('onclick').includes("'"+id+"'"))t.classList.add('active')});
-  if(id==='panoramica'){fillSelect('ov-ag',true);renderPanoramica()}
-  else if(id==='agenti')renderAgenti()
-  else if(id==='mensile'){fillSelect('ma-ag',true);fillSelect('mb-ag',false);renderMensile()}
-  else if(id==='confronto'){fillSelect('cf-ag',true);renderConfronto()}
-  else if(id==='mix')renderMix()
-  else if(id==='tabelle')renderTabella()
-}
 
 // Download self
 document.getElementById('dl-html').addEventListener('click',function(){
@@ -963,5 +963,279 @@ fillSelect('cf-ag',true);
 renderPanoramica();
 </script>
 
+<!-- MULTI-AGENTE -->
+<div id="multiagente" class="page">
+  <div class="ctrl-bar">
+    <label>Anno:</label>
+    <select id="ma2-yr" onchange="onMA2Change()"><option>2024</option><option>2025</option><option value="2026">2026</option></select>
+    <label>Metrica:</label>
+    <select id="ma2-metric" onchange="onMA2Change()"><option value="venduto">Venduto</option><option value="taciti">Taciti rinnovi</option><option value="incassato">Incassato</option></select>
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="ma2-btn-total" onclick="setMa2Mode('total')">Totale periodo</button>
+      <button class="mode-btn" id="ma2-btn-monthly" onclick="setMa2Mode('monthly')">Mensile</button>
+    </div>
+  </div>
+  <div class="chips-wrap" id="ma2-chips"></div>
+  <div class="card">
+    <div class="card-title" id="ma2-title">Multi-Agente</div>
+    <div class="legend" id="ma2-legend"></div>
+    <div id="ma2-chart-wrap" style="position:relative"><canvas id="c-ma2"></canvas></div>
+  </div>
+  <div class="card"><div class="card-title">Dati di dettaglio</div>
+    <div style="overflow-x:auto"><table id="ma2-table"></table></div></div>
+</div>
+
+<!-- ANALISI AVANZATA -->
+<div id="analisi" class="page">
+  <div class="ctrl-bar">
+    <label>Anno:</label>
+    <select id="an-yr" onchange="renderAnalisi()"><option>2024</option><option>2025</option><option value="2026">2026</option></select>
+    <label>Metrica:</label>
+    <select id="an-metric" onchange="renderAnalisi()"><option value="venduto">Venduto</option><option value="taciti">Taciti rinnovi</option><option value="incassato">Incassato</option></select>
+  </div>
+  <div class="grid2">
+    <div class="card"><div class="card-title">Ranking agenti</div><div id="an-ranking"></div></div>
+    <div class="card">
+      <div class="card-title">% Incassato / Venduto</div>
+      <div style="display:flex;gap:12px;font-size:11px;margin-bottom:10px">
+        <span style="color:#375623">■ verde &gt;80%</span>
+        <span style="color:#BF8F00">■ ambra 50–80%</span>
+        <span style="color:#C0392B">■ rosso &lt;50%</span>
+      </div>
+      <div id="an-pct-wrap" style="position:relative"><canvas id="c-an-pct"></canvas></div>
+    </div>
+  </div>
+  <div class="card"><div class="card-title">Gap Venduto vs Incassato</div>
+    <div id="an-gap-wrap" style="position:relative"><canvas id="c-an-gap"></canvas></div></div>
+  <div class="card"><div class="card-title">Cumulato YTD — progressivo per agente</div>
+    <div style="position:relative;height:300px"><canvas id="c-an-ytd"></canvas></div></div>
+</div>
+
+<!-- HEATMAP -->
+<div id="heatmap" class="page">
+  <div class="ctrl-bar">
+    <label>Anno:</label>
+    <select id="hm-yr" onchange="renderHeatmap()"><option>2024</option><option>2025</option><option value="2026">2026</option></select>
+    <label>Metrica:</label>
+    <select id="hm-metric" onchange="renderHeatmap()"><option value="venduto">Venduto</option><option value="taciti">Taciti rinnovi</option><option value="incassato">Incassato</option></select>
+  </div>
+  <div class="card">
+    <div class="card-title">Heatmap mensile agenti</div>
+    <div class="hm-legend">
+      <span><span class="hm-swatch" style="background:#C8E6C9"></span> Alto</span>
+      <span><span class="hm-swatch" style="background:#FFF9C4;border:1px solid #ddd"></span> Medio</span>
+      <span><span class="hm-swatch" style="background:#FFCDD2"></span> Basso</span>
+      <span><span class="hm-swatch" style="background:#f0f0f0"></span> Zero/N.D.</span>
+    </div>
+    <div style="overflow-x:auto" id="hm-table"></div>
+  </div>
+  <div class="card"><div class="card-title">Mix venduto — confronto anni</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">
+      <div><div style="text-align:center;font-size:12px;font-weight:600;color:var(--navy);margin-bottom:8px">2024</div><div style="position:relative;height:240px"><canvas id="hmpie0"></canvas></div></div>
+      <div><div style="text-align:center;font-size:12px;font-weight:600;color:var(--navy);margin-bottom:8px">2025</div><div style="position:relative;height:240px"><canvas id="hmpie1"></canvas></div></div>
+      <div><div style="text-align:center;font-size:12px;font-weight:600;color:var(--navy);margin-bottom:8px">2026 (Gen–Giu)</div><div style="position:relative;height:240px"><canvas id="hmpie2"></canvas></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── MULTI-AGENTE ──────────────────────────────────────────────────────────
+let selectedAgents2=new Set();
+let ma2Mode='total';
+
+function onMA2Change(){selectedAgents2=new Set();renderMultiAgente();}
+
+function setMa2Mode(m){
+  ma2Mode=m;
+  document.getElementById('ma2-btn-total').classList.toggle('active',m==='total');
+  document.getElementById('ma2-btn-monthly').classList.toggle('active',m==='monthly');
+  renderMultiAgente();
+}
+
+function toggleAgent2(ag){
+  if(selectedAgents2.has(ag)){if(selectedAgents2.size>1)selectedAgents2.delete(ag);}
+  else selectedAgents2.add(ag);
+  renderMultiAgente();
+}
+
+function buildAgentChips(yr,metric){
+  const agents=Object.keys(DATA[yr][metric]||{});
+  if(agents.filter(a=>selectedAgents2.has(a)).length===0)
+    selectedAgents2=new Set(agents.slice(0,4));
+  const c=document.getElementById('ma2-chips');if(!c)return;
+  c.innerHTML=agents.map(ag=>{
+    const idx=allAgents.indexOf(ag);
+    const col=AG_COLORS[idx>=0?idx%AG_COLORS.length:0];
+    const sel=selectedAgents2.has(ag);
+    return`<div class="chip" style="${sel?`background:${col};border-color:${col};color:#fff`:`background:#fff;border-color:${col};color:${col}`}" onclick="toggleAgent2('${ag}')">${ag}</div>`;
+  }).join('');
+}
+
+function renderMultiAgente(){
+  const yr=+document.getElementById('ma2-yr').value;
+  const metric=document.getElementById('ma2-metric').value;
+  const mos=yr===2026?months.slice(0,6):months;
+  const lbl={venduto:'Venduto',taciti:'Taciti rinnovi',incassato:'Incassato'};
+  buildAgentChips(yr,metric);
+  const selAgs=[...selectedAgents2].filter(ag=>DATA[yr][metric][ag]);
+  if(!selAgs.length)return;
+  document.getElementById('ma2-title').textContent=lbl[metric]+' '+yr+(selAgs.length>1?' — '+selAgs.length+' agenti':' — '+selAgs[0]);
+  document.getElementById('ma2-legend').innerHTML=selAgs.map(ag=>{
+    const col=AG_COLORS[allAgents.indexOf(ag)%AG_COLORS.length]||'#888';
+    return`<span><span class="ld" style="background:${col}"></span>${ag}</span>`;
+  }).join('');
+  destroy('c-ma2');
+  const wrap=document.getElementById('ma2-chart-wrap');
+  if(ma2Mode==='total'){
+    const items=selAgs.map(ag=>({ag,val:sumAg(yr,metric,ag)})).sort((a,b)=>b.val-a.val);
+    wrap.style.height=Math.max(160,items.length*44+60)+'px';
+    charts['c-ma2']=new Chart(document.getElementById('c-ma2'),{type:'bar',indexAxis:'y',
+      data:{labels:items.map(x=>x.ag),datasets:[{data:items.map(x=>x.val),
+        backgroundColor:items.map(x=>AG_COLORS[allAgents.indexOf(x.ag)%AG_COLORS.length]||'#888'),borderRadius:5}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fmt(c.raw)}}},
+        scales:{x:{ticks:{callback:v=>'€'+Math.round(v/1000)+'k'}},y:{ticks:{autoSkip:false}}}}});
+  } else {
+    wrap.style.height='300px';
+    const datasets=selAgs.map(ag=>({label:ag,
+      data:(DATA[yr][metric][ag]||[]).slice(0,mos.length).map(v=>sv(v)),
+      borderColor:AG_COLORS[allAgents.indexOf(ag)%AG_COLORS.length]||'#888',
+      backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:.3}));
+    charts['c-ma2']=new Chart(document.getElementById('c-ma2'),{type:'line',
+      data:{labels:mos,datasets},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{x:{ticks:{autoSkip:false}},y:{ticks:{callback:v=>'€'+Math.round(v/1000)+'k'}}}}});
+  }
+  const rows=[['Agente',...mos,'Totale'],
+    ...selAgs.map(ag=>{const r=(DATA[yr][metric][ag]||[]).slice(0,mos.length);
+      return[ag,...r.map(v=>v!=null?Math.round(v).toLocaleString('it-IT'):'—'),Math.round(sumArr(r)).toLocaleString('it-IT')];})];
+  document.getElementById('ma2-table').innerHTML=rows.map((row,ri)=>
+    `<tr>${row.map(cell=>`<${ri===0?'th':'td'}>${cell}</${ri===0?'th':'td'}>`).join('')}</tr>`).join('');
+}
+
+// ── ANALISI AVANZATA ─────────────────────────────────────────────────────
+function renderAnalisi(){
+  const yr=+document.getElementById('an-yr').value;
+  const metric=document.getElementById('an-metric').value;
+  const mos=yr===2026?months.slice(0,6):months;
+  const agents=Object.keys(DATA[yr][metric]||{});
+
+  // 1. Ranking
+  const rankItems=agents.map(ag=>({ag,val:sumAg(yr,metric,ag)})).sort((a,b)=>b.val-a.val);
+  const maxV=rankItems[0]?.val||1;
+  document.getElementById('an-ranking').innerHTML=rankItems.map((item,i)=>{
+    const col=AG_COLORS[allAgents.indexOf(item.ag)%AG_COLORS.length]||'#888';
+    const w=Math.round(item.val/maxV*100);
+    return`<div class="rank-row"><span class="rank-num">${i+1}</span><span class="rank-name">${item.ag}</span>
+      <div style="flex:1;background:#f0f4f8;border-radius:3px;height:18px;overflow:hidden">
+        <div class="rank-bar" style="width:${w}%;height:100%;background:${col}"></div></div>
+      <span class="rank-val">${fmt(item.val)}</span></div>`;
+  }).join('');
+
+  // 2. % Incassato/Venduto
+  const pctItems=agents.map(ag=>{
+    const v=sumAg(yr,'venduto',ag),inc=sumAg(yr,'incassato',ag);
+    return{ag,pct:v>0?Math.round(inc/v*100):0};
+  }).sort((a,b)=>b.pct-a.pct);
+  const pctH=Math.max(180,pctItems.length*30+60);
+  document.getElementById('an-pct-wrap').style.height=pctH+'px';
+  destroy('c-an-pct');
+  charts['c-an-pct']=new Chart(document.getElementById('c-an-pct'),{type:'bar',indexAxis:'y',
+    data:{labels:pctItems.map(x=>x.ag),datasets:[{
+      data:pctItems.map(x=>x.pct),borderRadius:4,
+      backgroundColor:pctItems.map(x=>x.pct>80?'#37562388':x.pct>50?'#BF8F0088':'#C0392B88'),
+      borderColor:pctItems.map(x=>x.pct>80?'#375623':x.pct>50?'#BF8F00':'#C0392B'),borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.raw+'%'}}},
+      scales:{x:{min:0,max:130,ticks:{callback:v=>v+'%'}},y:{ticks:{autoSkip:false}}}}});
+
+  // 3. Gap Venduto vs Incassato
+  const gapItems=agents.map(ag=>{
+    const v=sumAg(yr,'venduto',ag),inc=sumAg(yr,'incassato',ag);
+    return{ag,inc:Math.min(inc,v),gap:Math.max(0,v-inc)};
+  }).sort((a,b)=>(b.inc+b.gap)-(a.inc+a.gap));
+  const gapH=Math.max(180,gapItems.length*30+70);
+  document.getElementById('an-gap-wrap').style.height=gapH+'px';
+  destroy('c-an-gap');
+  charts['c-an-gap']=new Chart(document.getElementById('c-an-gap'),{type:'bar',indexAxis:'y',
+    data:{labels:gapItems.map(x=>x.ag),datasets:[
+      {label:'Incassato',data:gapItems.map(x=>x.inc),backgroundColor:'#37562355',borderColor:'#375623',borderWidth:1},
+      {label:'Gap residuo',data:gapItems.map(x=>x.gap),backgroundColor:'#C0392B44',borderColor:'#C0392B',borderWidth:1}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}},
+        tooltip:{callbacks:{label:c=>' '+c.dataset.label+': '+fmt(c.raw)}}},
+      scales:{x:{stacked:true,ticks:{callback:v=>'€'+Math.round(v/1000)+'k'}},
+        y:{stacked:true,ticks:{autoSkip:false}}}}});
+
+  // 4. Cumulato YTD
+  const ytdDs=agents.map(ag=>{
+    let cum=0;
+    const data=(DATA[yr][metric][ag]||[]).slice(0,mos.length)
+      .map(v=>v!=null?(cum+=sv(v),Math.round(cum)):null);
+    const idx=allAgents.indexOf(ag);
+    return{label:ag,data,borderColor:AG_COLORS[idx>=0?idx%AG_COLORS.length:0],
+      backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:.3,spanGaps:true};
+  });
+  destroy('c-an-ytd');
+  charts['c-an-ytd']=new Chart(document.getElementById('c-an-ytd'),{type:'line',
+    data:{labels:mos,datasets:ytdDs},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:11}}}},
+      scales:{x:{ticks:{autoSkip:false}},y:{ticks:{callback:v=>'€'+Math.round(v/1000)+'k'}}}}});
+}
+
+// ── HEATMAP ───────────────────────────────────────────────────────────────
+const hmCharts={};
+function renderHeatmap(){
+  const yr=+document.getElementById('hm-yr').value;
+  const metric=document.getElementById('hm-metric').value;
+  const mos=yr===2026?months.slice(0,6):months;
+  const agents=Object.keys(DATA[yr][metric]||{});
+  const allVals=agents.flatMap(ag=>(DATA[yr][metric][ag]||[]).slice(0,mos.length).filter(v=>v!=null&&v>0));
+  const maxV=allVals.length?Math.max(...allVals):1;
+  const p33=maxV/3,p66=maxV*2/3;
+  function cellBg(v){if(!v)return'#f0f0f0';if(v>=p66)return'#C8E6C9';if(v>=p33)return'#FFF9C4';return'#FFCDD2';}
+  function cellFg(v){if(!v)return'#aaa';if(v>=p66)return'#1B5E20';if(v>=p33)return'#E65100';return'#B71C1C';}
+  const hdr=`<tr><th style="text-align:left">Agente</th>${mos.map(m=>`<th>${m}</th>`).join('')}<th>Totale</th></tr>`;
+  const bodyRows=agents.map(ag=>{
+    const cells=mos.map((_,mi)=>{
+      const v=(DATA[yr][metric][ag]||[])[mi];
+      return`<td class="hm-cell" style="background:${cellBg(v)};color:${cellFg(v)}">${v!=null&&v>0?Math.round(v).toLocaleString('it-IT'):'—'}</td>`;
+    });
+    const tot=sumArr((DATA[yr][metric][ag]||[]).slice(0,mos.length));
+    return`<tr><td style="font-weight:500;font-size:12px;padding:6px 10px">${ag}</td>${cells.join('')}<td style="font-weight:700;padding:6px 10px">${fmt(tot)}</td></tr>`;
+  });
+  const totRow=`<tr class="tot"><td>TOTALE</td>${mos.map((_,mi)=>`<td>${fmt(agents.reduce((a,ag)=>a+sv((DATA[yr][metric][ag]||[])[mi]),0))}</td>`).join('')}<td>${fmt(agents.reduce((a,ag)=>a+sumArr((DATA[yr][metric][ag]||[]).slice(0,mos.length)),0))}</td></tr>`;
+  document.getElementById('hm-table').innerHTML=`<table>${hdr}${bodyRows.join('')}${totRow}</table>`;
+  Object.values(hmCharts).forEach(c=>c.destroy());Object.keys(hmCharts).forEach(k=>delete hmCharts[k]);
+  [2024,2025,2026].forEach((y,i)=>{
+    const ags=Object.keys(DATA[y].venduto);
+    const vals=ags.map(ag=>Math.round(sumArr(DATA[y].venduto[ag])));
+    const tot=vals.reduce((a,b)=>a+b,0);
+    hmCharts['hmpie'+i]=new Chart(document.getElementById('hmpie'+i),{type:'doughnut',
+      data:{labels:ags,datasets:[{data:vals,backgroundColor:ags.map((_,j)=>PIE_COLORS[j%PIE_COLORS.length]),borderWidth:2,borderColor:'#fff'}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:10}}},
+          tooltip:{callbacks:{label:c=>' '+fmt(c.raw)+' ('+(c.raw/tot*100).toFixed(1)+'%)'}}}}});
+  });
+}
+
+// ── NAV (aggiornato) ─────────────────────────────────────────────────────
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.tab').forEach(t=>{if(t.getAttribute('onclick').includes("'"+id+"'"))t.classList.add('active')});
+  if(id==='panoramica'){fillSelect('ov-ag',true);renderPanoramica()}
+  else if(id==='agenti')renderAgenti()
+  else if(id==='mensile'){fillSelect('ma-ag',true);fillSelect('mb-ag',false);renderMensile()}
+  else if(id==='confronto'){fillSelect('cf-ag',true);renderConfronto()}
+  else if(id==='mix')renderMix()
+  else if(id==='tabelle')renderTabella()
+  else if(id==='multiagente')renderMultiAgente()
+  else if(id==='analisi')renderAnalisi()
+  else if(id==='heatmap')renderHeatmap()
+}
+</script>
 
 </body></html>
