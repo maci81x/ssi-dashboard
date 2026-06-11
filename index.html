@@ -1,0 +1,967 @@
+<html lang="it"><head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.13/html-to-image.min.js" integrity="sha512-iZ2ORl595Wx6miw+GuadDet4WQbdSWS3JLMoNfY8cRGoEFy6oT3G9IbcrBeL6AfkgpA51ETt/faX6yLV+/gFJg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+      (function() {
+        // Capture host references before any artifact code runs: Window.parent
+        // is [Replaceable] (a top-level `var parent` in artifact code would
+        // replace the accessor with a data property), and a top-level
+        // `const crypto` would shadow the global — either would otherwise
+        // silently break the bridge for artifacts that worked before.
+        const realParent = window.parent;
+        const cryptoObj = window.crypto;
+        // crypto.randomUUID exists only in Secure Contexts; fall back to a
+        // unique non-crypto id elsewhere (http://LAN-IP dev flows) —
+        // uniqueness is what the bridge needs, unpredictability is
+        // defense-in-depth on top of the source guards.
+        const newRequestId =
+          cryptoObj && typeof cryptoObj.randomUUID === "function"
+            ? function () { return cryptoObj.randomUUID(); }
+            : function () { return Date.now() + "-" + Math.random(); };
+        const originalConsole = window.console;
+        window.console = {
+          log: (...args) => {
+            originalConsole.log(...args);
+            realParent.postMessage({ type: 'console', message: args.join(' ') }, '*');
+          },
+          error: (...args) => {
+            originalConsole.error(...args);
+            realParent.postMessage({ type: 'console', message: 'Error: ' + args.join(' ') }, '*');
+          },
+          warn: (...args) => {
+            originalConsole.warn(...args);
+            realParent.postMessage({ type: 'console', message: 'Warning: ' + args.join(' ') }, '*');
+          }
+        };
+
+        // Bridge request ids are crypto-random (not sequential) so they
+        // cannot be predicted by other frames in the tab.
+        let callbacksMap = new Map();
+        let streamControllers = new Map();
+        
+        window.claude = {
+          complete: (prompt) => {
+            return new Promise((resolve, reject) => {
+              const id = newRequestId();
+              callbacksMap.set(id, { resolve, reject });
+              realParent.postMessage({ type: 'claudeComplete', id, prompt }, '*');
+            });
+          }
+        };
+
+        window.storage = {
+          get: (key, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = newRequestId();
+              callbacksMap.set(id, { resolve, reject });
+              realParent.postMessage({ type: 'storageGet', id, key, shared }, '*');
+            });
+          },
+          set: (key, value, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = newRequestId();
+              callbacksMap.set(id, { resolve, reject });
+              realParent.postMessage({ type: 'storageSet', id, key, value, shared }, '*');
+            });
+          },
+          delete: (key, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = newRequestId();
+              callbacksMap.set(id, { resolve, reject });
+              realParent.postMessage({ type: 'storageDelete', id, key, shared }, '*');
+            });
+          },
+          list: (prefix, shared = false) => {
+            return new Promise((resolve, reject) => {
+              const id = newRequestId();
+              callbacksMap.set(id, { resolve, reject });
+              realParent.postMessage({ type: 'storageList', id, prefix, shared }, '*');
+            });
+          }
+        };
+
+        let pendingBlobs = new Map();
+        URL.createObjectURL = (blob) => {
+          // Store the blob and create an ID and URL for it
+          const blobId = `blob-${Date.now()}-${Math.random()}`;
+          pendingBlobs.set(blobId, blob);
+          return `blob-request://${blobId}`;
+        };
+
+        URL.revokeObjectURL = (url) => {
+          // Remove the blob from our store
+          const blobId = url.replace("blob-request://", "");
+          pendingBlobs.delete(blobId);
+        };
+
+        const getBlobFromURL = (url) => {
+          const blobId = url.replace("blob-request://", "");
+          return pendingBlobs.get(blobId);
+        };
+
+        // Override global fetch with streaming support
+        window.fetch = (url, init = {}) => {
+          return new Promise((resolve, reject) => {
+            const id = newRequestId();
+            const channelId = `fetch-${id}-${Date.now()}`;
+            
+            callbacksMap.set(id, { 
+              resolve: (response) => {
+                // Null-body statuses: Response(stream, {status: 204}) throws
+                // per the Fetch spec, which would escape this resolver and
+                // hang the artifact's await forever.
+                if (response.status === 204 || response.status === 205 || response.status === 304) {
+                  try {
+                    resolve(new Response(null, {
+                      status: response.status,
+                      statusText: response.statusText,
+                      headers: response.headers
+                    }));
+                  } catch (err) {
+                    // Invalid statusText/header bytes can throw here too.
+                    reject(new TypeError(
+                      'Bridge fetch: unconstructable response (status ' + response.status + ')'
+                    ));
+                  }
+                  return;
+                }
+                // Create a ReadableStream for the response body
+                const stream = new ReadableStream({
+                  start(controller) {
+                    streamControllers.set(channelId, controller);
+                  },
+                  cancel() {
+                    streamControllers.delete(channelId);
+                  }
+                });
+                
+                // Create and return the Response with the stream. Response()
+                // requires status in [200, 599]; an opaque/no-cors fetch
+                // forwards status 0, which would throw here and escape the
+                // resolver, hanging the artifact's await. Surface it as a
+                // network-error-shaped rejection instead.
+                try {
+                  resolve(new Response(stream, {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: response.headers
+                  }));
+                } catch (err) {
+                  streamControllers.delete(channelId);
+                  reject(new TypeError(
+                    'Bridge fetch: unconstructable response (status ' + response.status + ')'
+                  ));
+                }
+              },
+              reject,
+              channelId
+            });
+            
+            realParent.postMessage({
+              type: 'proxyFetch',
+              id,
+              url,
+              init,
+              channelId
+            }, '*');
+          });
+        };
+
+        window.addEventListener('message', async (event) => {
+          // Only the embedding parent may drive the bridge — sibling and
+          // nested frames can also postMessage into this window.
+          if (event.source !== realParent) return;
+          if (event.data.type === 'takeScreenshot') {
+            // Echo the request's nonce so the requester can correlate the
+            // reply to ITS request — a reply without the expected nonce
+            // (e.g. from a stale pre-remount artifact) is ignored upstream.
+            const screenshotNonce = event.data.nonce;
+            const rootElement = document.getElementById('artifacts-component-root-html');
+            if (!rootElement) {
+              realParent.postMessage({
+                type: 'screenshotError',
+                nonce: screenshotNonce,
+                error: new Error('Root element not found'),
+              }, '*');
+              return;
+            }
+            // Catch CDN load failures (htmlToImage undefined) and toPng errors
+            // so the parent always gets a response instead of hanging forever.
+            try {
+              const screenshot = await htmlToImage.toPng(rootElement, {
+                imagePlaceholder:
+                  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAA1JREFUGFdjePDgwX8ACOQDoNsk0PMAAAAASUVORK5CYII=",
+              });
+              realParent.postMessage({
+                type: 'screenshotData',
+                nonce: screenshotNonce,
+                data: screenshot,
+              }, '*');
+            } catch (err) {
+              realParent.postMessage({
+                type: 'screenshotError',
+                nonce: screenshotNonce,
+                error: err instanceof Error ? err : new Error(String(err)),
+              }, '*');
+            }
+          } else if (event.data.type === 'claudeComplete') {
+            const callback = callbacksMap.get(event.data.id);
+            if (!callback) return;
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.completion);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'proxyFetchResponse') {
+            const callback = callbacksMap.get(event.data.id);
+            if (!callback) return;
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+              callbacksMap.delete(event.data.id);
+            } else {
+              // Initial response with headers, status, etc.
+              callback.resolve({
+                status: event.data.status,
+                statusText: event.data.statusText,
+                headers: event.data.headers
+              });
+              // Don't delete the callback yet if streaming
+              if (!event.data.body) {
+                callbacksMap.delete(event.data.id);
+              }
+            }
+          } else if (event.data.type === 'proxyFetchStream') {
+            // Handle streaming data chunks
+            const controller = streamControllers.get(event.data.channelId);
+            if (controller) {
+              if (event.data.error) {
+                controller.error(new Error(event.data.error));
+                streamControllers.delete(event.data.channelId);
+              } else if (event.data.done) {
+                controller.close();
+                streamControllers.delete(event.data.channelId);
+                // Clean up the callback
+                const callback = Array.from(callbacksMap.entries()).find(
+                  ([_, value]) => value.channelId === event.data.channelId
+                );
+                if (callback) {
+                  callbacksMap.delete(callback[0]);
+                }
+              } else if (event.data.chunk) {
+                controller.enqueue(new Uint8Array(event.data.chunk));
+              }
+            }
+          } else if (event.data.type === 'storageGet') {
+            const callback = callbacksMap.get(event.data.id);
+            if (!callback) return;
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'storageSet') {
+            const callback = callbacksMap.get(event.data.id);
+            if (!callback) return;
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'storageDelete') {
+            const callback = callbacksMap.get(event.data.id);
+            if (!callback) return;
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          } else if (event.data.type === 'storageList') {
+            const callback = callbacksMap.get(event.data.id);
+            if (!callback) return;
+            if (event.data.error) {
+              callback.reject(new Error(event.data.error));
+            } else {
+              callback.resolve(event.data.result);
+            }
+            callbacksMap.delete(event.data.id);
+          }
+        });
+
+        window.addEventListener('click', (event) => {
+          const isEl = event.target instanceof HTMLElement;
+          if (!isEl) return;
+    
+          // find ancestor links
+          const linkEl = event.target.closest("a");
+          if (!linkEl || !linkEl.href) return;
+    
+          event.preventDefault();
+          event.stopImmediatePropagation();
+    
+          if (linkEl.href.startsWith("blob-request:")) {
+            const blob = getBlobFromURL(linkEl.href);
+            if (!blob) return;
+            void blob.arrayBuffer().then((data) => {
+              realParent.postMessage({
+                type: "downloadFile",
+                filename: linkEl.download,
+                data,
+                mimeType: blob.type || "application/octet-stream",
+              });
+            });
+          } else if (linkEl.href.startsWith("data:")) {
+            const [header, base64Data] = linkEl.href.split(",");
+            const mimeMatch = header.match(/data:([^;]+)/);
+            const mimeType = mimeMatch ? mimeMatch[1] : "application/octet-stream";
+            const binaryString = atob(base64Data);
+            const data = Uint8Array.from(binaryString, (c) =>
+              c.charCodeAt(0),
+            ).buffer;
+            realParent.postMessage({
+              type: "downloadFile",
+              filename: linkEl.download,
+              data,
+              mimeType,
+            });
+          } else {
+            let linkUrl;
+            try {
+              linkUrl = new URL(linkEl.href);
+            } catch (error) {
+              return;
+            }
+    
+            if (linkUrl.hostname === window.location.hostname) return;
+      
+            realParent.postMessage({
+              type: 'openExternal',
+              href: linkEl.href,
+            }, '*');
+          }
+      });
+
+        const originalOpen = window.open;
+        window.open = function (url) {
+          realParent.postMessage({
+            type: "openExternal",
+            href: url,
+          }, "*");
+        };
+
+        window.addEventListener('error', (event) => {
+          realParent.postMessage({ type: 'console', message: 'Uncaught Error: ' + event.message }, '*');
+        });
+      })();
+    </script>
+  
+<meta charset="utf-8">
+<title>SSI – Dashboard Vendite 2024–2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#1F3864;--blue:#2E75B6;--lblue:#BDD7EE;--xblue:#DEEAF1;
+  --green:#375623;--lgreen:#E2EFDA;--red:#C0392B;--lred:#FCE4EC;
+  --amber:#BF8F00;--lamber:#FFF2CC;--grey:#F5F6FA;--dgrey:#555;
+  --white:#fff;--border:#E0E4EF;--text:#1a1a2e;--text2:#555;
+}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--grey);color:var(--text);font-size:14px}
+.topbar{background:var(--navy);color:#fff;padding:14px 28px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.topbar h1{font-size:16px;font-weight:600;letter-spacing:.02em}
+.topbar .sub{font-size:11px;opacity:.65;margin-top:2px}
+.tabs{display:flex;gap:0;background:#fff;border-bottom:2px solid var(--border);padding:0 28px;overflow-x:auto}
+.tab{padding:13px 20px;font-size:13px;cursor:pointer;border-bottom:3px solid transparent;color:var(--dgrey);white-space:nowrap;transition:all .2s;margin-bottom:-2px}
+.tab.active{color:var(--navy);border-bottom-color:var(--navy);font-weight:600}
+.tab:hover:not(.active){color:var(--navy);background:#f8f9ff}
+.page{display:none;padding:24px 28px;animation:fadeIn .2s}
+.page.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.ctrl-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px;background:#fff;padding:12px 16px;border-radius:8px;border:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.ctrl-bar label{font-size:12px;color:var(--dgrey);font-weight:500}
+.ctrl-bar select{font-size:13px;padding:5px 10px;border:1px solid var(--border);border-radius:5px;background:#fff;cursor:pointer}
+.mode-toggle{display:flex;border:1px solid var(--border);border-radius:7px;overflow:hidden;width:fit-content}
+.mode-btn{padding:7px 16px;font-size:12px;cursor:pointer;background:#fff;color:var(--dgrey);border:none;border-right:1px solid var(--border);transition:all .15s;font-weight:500}
+.mode-btn:last-child{border-right:none}
+.mode-btn.active{background:var(--navy);color:#fff}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:22px}
+.metric{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.metric-label{font-size:10px;color:var(--dgrey);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.metric-value{font-size:21px;font-weight:700;color:var(--navy)}
+.metric-sub{font-size:11px;color:#999;margin-top:3px}
+.metric-sub.pos{color:#1a7a4a;font-weight:600}
+.metric-sub.neg{color:var(--red);font-weight:600}
+.card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.card-title{font-size:13px;font-weight:600;color:var(--navy);margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.card-title::before{content:'';display:inline-block;width:4px;height:16px;border-radius:2px;background:var(--navy)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:12px;font-size:12px;color:var(--dgrey)}
+.legend span{display:flex;align-items:center;gap:5px}
+.ld{width:12px;height:12px;border-radius:2px;flex-shrink:0}
+.chart-wrap{position:relative;width:100%}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+@media(max-width:900px){.grid2,.grid3{grid-template-columns:1fr}}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#f0f4f8;text-align:center;padding:7px 10px;border:1px solid #e0e4ef;font-weight:600;color:var(--navy);font-size:11px}
+td{padding:6px 10px;border:1px solid #edf0f7;text-align:right;color:var(--text)}
+td:first-child{text-align:left;font-weight:500}
+tr:nth-child(even){background:#fafbfc}
+tr.tot td{background:#e8f0fb;font-weight:700;color:var(--navy)}
+.delta-pos{color:#1a7a4a;font-weight:600}
+.delta-neg{color:var(--red);font-weight:600}
+.sep{height:1px;background:var(--border);margin:22px 0}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+.badge-green{background:#e2efda;color:#375623}
+.badge-red{background:#fce4ec;color:#c0392b}
+.badge-blue{background:#deeaf1;color:#1f3864}
+.badge-amber{background:#fff2cc;color:#bf8f00}
+.agent-card{background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.agent-name{font-size:13px;font-weight:600;color:var(--navy)}
+.agent-kpis{display:flex;gap:10px;flex-wrap:wrap}
+.kpi-pill{background:#f0f4f8;border-radius:6px;padding:3px 8px;font-size:11px;color:var(--dgrey)}
+.kpi-pill strong{color:var(--navy)}
+</style>
+</head>
+<body id="artifacts-component-root-html">
+<div class="topbar">
+  <div>
+    <h1>SSI Soluzioni Impresa — Dashboard Vendite 2024–2026</h1>
+    <div class="sub" id="ts">Dati aggiornati al: 11 giugno 2026</div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a id="dl-html" download="SSI_dashboard.html" style="font-size:12px;padding:6px 14px;background:rgba(255,255,255,.15);color:#fff;border-radius:5px;text-decoration:none;border:1px solid rgba(255,255,255,.3)">⬇ Scarica HTML</a>
+  </div>
+</div>
+
+<div class="tabs" id="tabs">
+  <div class="tab active" onclick="showPage('panoramica')">Panoramica anni</div>
+  <div class="tab" onclick="showPage('agenti')">Agenti</div>
+  <div class="tab" onclick="showPage('mensile')">Andamento mensile</div>
+  <div class="tab" onclick="showPage('confronto')">Confronto mesi</div>
+  <div class="tab" onclick="showPage('mix')">Mix venduto</div>
+  <div class="tab" onclick="showPage('tabelle')">Tabelle dati</div>
+</div>
+
+<!-- PANORAMICA -->
+<div id="panoramica" class="page active">
+  <div class="ctrl-bar">
+    <label>Agente:</label><select id="ov-ag" onchange="renderPanoramica()"><option value="all">Tutti gli agenti</option><option value="Roberto Macinai">Roberto Macinai</option><option value="Massimo Necci">Massimo Necci</option><option value="Giovanna Panti">Giovanna Panti</option><option value="Marco Macinai">Marco Macinai</option><option value="Mattia Guardiani">Mattia Guardiani</option><option value="Manuel Franceschini">Manuel Franceschini</option><option value="Francesco Pelliccia">Francesco Pelliccia</option><option value="Davide Gaziano">Davide Gaziano</option><option value="Alberto Mancini">Alberto Mancini</option><option value="COMMERCIALE AR">COMMERCIALE AR</option><option value="COMMERCIALE MR">COMMERCIALE MR</option></select>
+  </div>
+  <div class="metrics" id="ov-metrics"><div class="metric"><div class="metric-label">Venduto 2024</div><div class="metric-value">€1.036.147</div><div class="metric-sub ">12 mesi</div></div><div class="metric"><div class="metric-label">Venduto 2025</div><div class="metric-value">€1.425.078</div><div class="metric-sub pos">+37.5% vs 2024</div></div><div class="metric"><div class="metric-label">Venduto 2026</div><div class="metric-value">€803.668</div><div class="metric-sub ">Gen–Giu</div></div><div class="metric"><div class="metric-label">Incassato 2024</div><div class="metric-value">€1.013.597</div><div class="metric-sub ">12 mesi</div></div><div class="metric"><div class="metric-label">Incassato 2025</div><div class="metric-value">€1.478.349</div><div class="metric-sub pos">+45.9% vs 2024</div></div><div class="metric"><div class="metric-label">Incassato 2026</div><div class="metric-value">€756.727</div><div class="metric-sub ">Gen–Giu</div></div></div>
+  <div class="grid2">
+    <div class="card"><div class="card-title">Venduto · Taciti · Incassato per anno</div>
+      <div class="legend"><span><span class="ld" style="background:#1F3864"></span>Venduto</span><span><span class="ld" style="background:#375623"></span>Taciti rinnovi</span><span><span class="ld" style="background:#C0392B"></span>Incassato</span></div>
+      <div class="chart-wrap" style="height:280px"><canvas id="c-ov" style="box-sizing: border-box; display: block; height: 280px; width: 541px;" width="1082" height="560"></canvas></div></div>
+    <div class="card"><div class="card-title">Crescita % anno su anno (2024→2025)</div>
+      <div class="chart-wrap" style="height:280px"><canvas id="c-gr" style="box-sizing: border-box; display: block; height: 280px; width: 541px;" width="1082" height="560"></canvas></div></div>
+  </div>
+  <div class="card"><div class="card-title">Venduto mensile 2026 — tutti gli agenti (Gen–Giu)</div>
+    <div class="chart-wrap" style="height:220px"><canvas id="c-ov2026" style="box-sizing: border-box; display: block; height: 220px; width: 541px;" width="1082" height="440"></canvas></div></div>
+</div>
+
+<!-- AGENTI -->
+<div id="agenti" class="page">
+  <div class="ctrl-bar">
+    <label>Metrica:</label>
+    <select id="ag-metric" onchange="renderAgenti()">
+      <option value="venduto">Venduto</option><option value="taciti">Taciti rinnovi</option><option value="incassato">Incassato</option>
+    </select>
+  </div>
+  <div class="card"><div class="card-title" id="ag-title">Venduto per agente — tutti gli anni</div>
+    <div class="legend"><span><span class="ld" style="background:#1F3864"></span>2024</span><span><span class="ld" style="background:#375623"></span>2025</span><span><span class="ld" style="background:#C0392B"></span>2026</span></div>
+    <div class="chart-wrap" id="ag-wrap" style="height: 586px;"><canvas id="c-ag" width="1082" height="1172" style="display: block; box-sizing: border-box; height: 586px; width: 541px;"></canvas></div></div>
+  <div class="card"><div class="card-title">Riepilogo agenti 2026 (Gen–Giu)</div>
+    <div id="agent-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:4px"><div class="agent-card" style="border-left:4px solid #1F3864">
+      <div class="agent-name">Roberto Macinai</div>
+      <div class="agent-kpis">
+        <div class="kpi-pill">Venduto <strong>€178.912</strong></div>
+        <div class="kpi-pill">Incassato <strong>€150.490</strong></div>
+      </div>
+    </div><div class="agent-card" style="border-left:4px solid #2E75B6">
+      <div class="agent-name">Massimo Necci</div>
+      <div class="agent-kpis">
+        <div class="kpi-pill">Venduto <strong>€214.610</strong></div>
+        <div class="kpi-pill">Incassato <strong>€197.731</strong></div>
+      </div>
+    </div><div class="agent-card" style="border-left:4px solid #C0392B">
+      <div class="agent-name">Giovanna Panti</div>
+      <div class="agent-kpis">
+        <div class="kpi-pill">Venduto <strong>€135.814</strong></div>
+        <div class="kpi-pill">Incassato <strong>€185.629</strong></div>
+      </div>
+    </div><div class="agent-card" style="border-left:4px solid #375623">
+      <div class="agent-name">Marco Macinai</div>
+      <div class="agent-kpis">
+        <div class="kpi-pill">Venduto <strong>€118.544</strong></div>
+        <div class="kpi-pill">Incassato <strong>€131.747</strong></div>
+      </div>
+    </div><div class="agent-card" style="border-left:4px solid #BF8F00">
+      <div class="agent-name">Mattia Guardiani</div>
+      <div class="agent-kpis">
+        <div class="kpi-pill">Venduto <strong>€13.048</strong></div>
+        <div class="kpi-pill">Incassato <strong>€8898</strong></div>
+      </div>
+    </div><div class="agent-card" style="border-left:4px solid #7B3F9E">
+      <div class="agent-name">Davide Gaziano</div>
+      <div class="agent-kpis">
+        <div class="kpi-pill">Venduto <strong>€71.127</strong></div>
+        <div class="kpi-pill">Incassato <strong>€41.181</strong></div>
+      </div>
+    </div><div class="agent-card" style="border-left:4px solid #5F6368">
+      <div class="agent-name">Francesco Pelliccia</div>
+      <div class="agent-kpis">
+        <div class="kpi-pill">Venduto <strong>€3087</strong></div>
+        <div class="kpi-pill">Incassato <strong>€15.547</strong></div>
+      </div>
+    </div><div class="agent-card" style="border-left:4px solid #0277BD">
+      <div class="agent-name">Alberto Mancini</div>
+      <div class="agent-kpis">
+        <div class="kpi-pill">Venduto <strong>€18.798</strong></div>
+        <div class="kpi-pill">Incassato <strong>€8898</strong></div>
+      </div>
+    </div><div class="agent-card" style="border-left:4px solid #2E7D32">
+      <div class="agent-name">COMMERCIALE AR</div>
+      <div class="agent-kpis">
+        <div class="kpi-pill">Venduto <strong>€35.960</strong></div>
+        <div class="kpi-pill">Incassato <strong>€6610</strong></div>
+      </div>
+    </div><div class="agent-card" style="border-left:4px solid #E65100">
+      <div class="agent-name">COMMERCIALE MR</div>
+      <div class="agent-kpis">
+        <div class="kpi-pill">Venduto <strong>€13.770</strong></div>
+        <div class="kpi-pill">Incassato <strong>€9997</strong></div>
+      </div>
+    </div></div></div>
+</div>
+
+<!-- MENSILE -->
+<div id="mensile" class="page">
+  <div style="margin-bottom:14px">
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="m-agenti" onclick="setMode('agenti')">Agenti nello stesso anno</button>
+      <button class="mode-btn" id="m-anni" onclick="setMode('anni')">Stesso agente su anni diversi</button>
+    </div>
+  </div>
+  <div id="ctrl-agenti" class="ctrl-bar">
+    <label>Anno:</label><select id="ma-yr" onchange="renderMensile()"><option>2024</option><option>2025</option><option value="2026">2026</option></select>
+    <label>Metrica:</label><select id="ma-metric" onchange="renderMensile()"><option value="venduto">Venduto</option><option value="taciti">Taciti rinnovi</option><option value="incassato">Incassato</option></select>
+    <label>Agente:</label><select id="ma-ag" onchange="renderMensile()"><option value="all">Tutti gli agenti</option><option value="Roberto Macinai">Roberto Macinai</option><option value="Massimo Necci">Massimo Necci</option><option value="Giovanna Panti">Giovanna Panti</option><option value="Marco Macinai">Marco Macinai</option><option value="Mattia Guardiani">Mattia Guardiani</option><option value="Manuel Franceschini">Manuel Franceschini</option><option value="Francesco Pelliccia">Francesco Pelliccia</option><option value="Davide Gaziano">Davide Gaziano</option><option value="Alberto Mancini">Alberto Mancini</option><option value="COMMERCIALE AR">COMMERCIALE AR</option><option value="COMMERCIALE MR">COMMERCIALE MR</option></select>
+  </div>
+  <div id="ctrl-anni" class="ctrl-bar" style="display:none">
+    <label>Agente:</label><select id="mb-ag" onchange="renderMensile()"><option value="Roberto Macinai">Roberto Macinai</option><option value="Massimo Necci">Massimo Necci</option><option value="Giovanna Panti">Giovanna Panti</option><option value="Marco Macinai">Marco Macinai</option><option value="Mattia Guardiani">Mattia Guardiani</option><option value="Manuel Franceschini">Manuel Franceschini</option><option value="Francesco Pelliccia">Francesco Pelliccia</option><option value="Davide Gaziano">Davide Gaziano</option><option value="Alberto Mancini">Alberto Mancini</option><option value="COMMERCIALE AR">COMMERCIALE AR</option><option value="COMMERCIALE MR">COMMERCIALE MR</option></select>
+    <label>Metrica:</label><select id="mb-metric" onchange="renderMensile()"><option value="venduto">Venduto</option><option value="taciti">Taciti rinnovi</option><option value="incassato">Incassato</option></select>
+    <label style="margin-left:6px">Anni:</label>
+    <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="yr24" checked="" onchange="renderMensile()"> 2024</label>
+    <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="yr25" checked="" onchange="renderMensile()"> 2025</label>
+    <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="yr26" checked="" onchange="renderMensile()"> 2026</label>
+  </div>
+  <div class="card"><div class="card-title" id="m-title">Venduto mensile 2024</div>
+    <div class="legend" id="m-legend"><span><span class="ld" style="background:#1F3864"></span>Roberto Macinai</span><span><span class="ld" style="background:#2E75B6"></span>Massimo Necci</span><span><span class="ld" style="background:#C0392B"></span>Giovanna Panti</span><span><span class="ld" style="background:#375623"></span>Marco Macinai</span></div>
+    <div class="chart-wrap" style="height:310px"><canvas id="c-men" width="1082" height="620" style="display: block; box-sizing: border-box; height: 310px; width: 541px;"></canvas></div></div>
+  <div class="card"><div class="card-title">Dati di dettaglio</div>
+    <div style="overflow-x:auto"><table id="m-table"><tbody><tr><th>Agente</th><th>Gen</th><th>Feb</th><th>Mar</th><th>Apr</th><th>Mag</th><th>Giu</th><th>Lug</th><th>Ago</th><th>Set</th><th>Ott</th><th>Nov</th><th>Dic</th><th>Totale</th></tr><tr><td>Roberto Macinai</td><td>42.740</td><td>47.618</td><td>39.630</td><td>31.556</td><td>54.366</td><td>56.214</td><td>31.649</td><td>4824</td><td>8417</td><td>20.207</td><td>33.925</td><td>9576</td><td>380.719</td></tr><tr><td>Massimo Necci</td><td>12.592</td><td>24.385</td><td>36.409</td><td>17.674</td><td>21.798</td><td>14.502</td><td>9052</td><td>11.930</td><td>14.449</td><td>35.723</td><td>35.456</td><td>10.831</td><td>244.800</td></tr><tr><td>Giovanna Panti</td><td>15.684</td><td>12.475</td><td>29.881</td><td>9673</td><td>11.249</td><td>17.549</td><td>14.384</td><td>18.983</td><td>7090</td><td>25.277</td><td>31.394</td><td>7337</td><td>200.975</td></tr><tr><td>Marco Macinai</td><td>45.429</td><td>21.355</td><td>12.203</td><td>28.071</td><td>17.657</td><td>13.116</td><td>13.030</td><td>7680</td><td>11.935</td><td>15.930</td><td>19.422</td><td>3825</td><td>209.653</td></tr></tbody></table></div></div>
+</div>
+
+<!-- CONFRONTO MESI -->
+<div id="confronto" class="page">
+  <div class="ctrl-bar">
+    <label>Metrica:</label>
+    <select id="cf-metric" onchange="renderConfronto()"><option value="venduto">Venduto</option><option value="taciti">Taciti rinnovi</option><option value="incassato">Incassato</option></select>
+    <label>Agente:</label><select id="cf-ag" onchange="renderConfronto()"><option value="all">Tutti gli agenti</option><option value="Roberto Macinai">Roberto Macinai</option><option value="Massimo Necci">Massimo Necci</option><option value="Giovanna Panti">Giovanna Panti</option><option value="Marco Macinai">Marco Macinai</option><option value="Mattia Guardiani">Mattia Guardiani</option><option value="Manuel Franceschini">Manuel Franceschini</option><option value="Francesco Pelliccia">Francesco Pelliccia</option><option value="Davide Gaziano">Davide Gaziano</option><option value="Alberto Mancini">Alberto Mancini</option><option value="COMMERCIALE AR">COMMERCIALE AR</option><option value="COMMERCIALE MR">COMMERCIALE MR</option></select>
+  </div>
+  <div class="card"><div class="card-title" id="cf-title">Confronto stesso mese — anni diversi</div>
+    <div class="legend"><span><span class="ld" style="background:#1F3864"></span>2024</span><span><span class="ld" style="background:#375623"></span>2025</span><span><span class="ld" style="background:#C0392B;border:2px dashed #C0392B;background:transparent"></span>2026 (parz.)</span></div>
+    <div class="chart-wrap" style="height:300px"><canvas id="c-cf"></canvas></div></div>
+  <div class="grid2">
+    <div class="card"><div class="card-title">Δ% 2025 vs 2024 — per mese</div>
+      <div class="chart-wrap" style="height:240px"><canvas id="c-d1"></canvas></div></div>
+    <div class="card"><div class="card-title">Δ% 2026 vs 2025 — stesso periodo (Gen–Giu)</div>
+      <div class="chart-wrap" style="height:240px"><canvas id="c-d2"></canvas></div></div>
+  </div>
+</div>
+
+<!-- MIX -->
+<div id="mix" class="page">
+  <div class="ctrl-bar">
+    <label>Anno:</label>
+    <select id="mix-yr" onchange="renderMix()"><option value="all">Tutti (3 donut)</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026 (Gen–Giu)</option></select>
+    <label>Metrica:</label>
+    <select id="mix-metric" onchange="renderMix()"><option value="venduto">Venduto</option><option value="taciti">Taciti rinnovi</option><option value="incassato">Incassato</option></select>
+  </div>
+  <div id="mix-container"></div>
+  <div class="legend" id="mix-legend" style="margin-top:14px;justify-content:center;flex-wrap:wrap"></div>
+</div>
+
+<!-- TABELLE -->
+<div id="tabelle" class="page">
+  <div class="ctrl-bar">
+    <label>Anno:</label><select id="tb-yr" onchange="renderTabella()"><option>2024</option><option>2025</option><option value="2026">2026</option></select>
+    <label>Metrica:</label><select id="tb-metric" onchange="renderTabella()"><option value="venduto">Venduto</option><option value="taciti">Taciti rinnovi</option><option value="incassato">Incassato</option></select>
+  </div>
+  <div class="card"><div class="card-title" id="tb-title">Tabella dati</div>
+    <div style="overflow-x:auto"><table id="tb-table"></table></div></div>
+</div>
+
+<script>
+document.getElementById('ts').textContent='Dati aggiornati al: '+new Date().toLocaleDateString('it-IT',{day:'2-digit',month:'long',year:'numeric'});
+
+const months=['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+const yrColors={2024:'#1F3864',2025:'#375623',2026:'#C0392B'};
+const yrDash={2024:[],2025:[8,4],2026:[3,3]};
+const AG_COLORS=['#1F3864','#2E75B6','#C0392B','#375623','#BF8F00','#7B3F9E','#5F6368','#0277BD','#2E7D32','#E65100','#880E4F'];
+const PIE_COLORS=['#1F3864','#375623','#C0392B','#7B3F9E','#BF8F00','#C2185B','#5F6368','#0277BD','#2E7D32','#E65100','#880E4F'];
+
+// ── DATA ─────────────────────────────────────────────────────────────────
+const DATA={
+2024:{
+  venduto:{
+    'Roberto Macinai':[42740,47617.5,39629.5,31556,54366,56213.5,31648.5,4824.1,8416.5,20207,33924.5,9575.5],
+    'Massimo Necci':[12592,24385,36408.5,17674,21798,14502,9052,11930,14449.2,35723,35455.5,10831.2],
+    'Giovanna Panti':[15684,12475,29880.5,9673,11249,17548.75,14384,18983,7090,25277,31394.2,7337],
+    'Marco Macinai':[45429,21355,12203,28071,17657,13116,13030,7680,11935,15930,19422,3825],
+  },
+  taciti:{
+    'Roberto Macinai':[4805,3670,6610,2780,7256,8019.76,5332,5088,8318.33,6988.33,5223.33,4475],
+    'Massimo Necci':[5217,2747.5,6155.5,6882,4794,4605,6904,1297.5,2065,3630,1554.5,1619],
+    'Giovanna Panti':[7496.67,8061.67,10250.67,9486.67,13672.67,5851.67,4964.67,5563.67,3224.67,5537.67,8645.67,8841.67],
+    'Marco Macinai':[4318,3572.33,2915,1400,3907.33,4100,3407,2183.34,1754,1430,2639,3325],
+  },
+  incassato:{
+    'Roberto Macinai':[23896.69,15295.49,13799.29,20603.33,21176.85,23953.64,21798.81,24688.66,14145.02,14879.86,23651.8,22234.71],
+    'Massimo Necci':[6451.33,11386.2,11791.66,20496.98,29317.99,20343.33,24438.35,10583.98,23473.48,22648.25,30326.95,25436.74],
+    'Giovanna Panti':[23033.13,12425.51,22804.18,36369.13,25398.25,30429.69,23235.77,21641.41,37137.92,28512.35,27268.96,38586.61],
+    'Marco Macinai':[11067.98,17993.27,22261.67,19509.63,28266.51,17788.9,5301.84,17986.59,16935.27,18832.25,19807.92,14182.5],
+  },
+},
+2025:{
+  venduto:{
+    'Roberto Macinai':[14727,45979,81223.5,38027.5,52780.18,15917,72393.51,14780.16,13367.5,32812,53387.3,25014.02],
+    'Massimo Necci':[71395.2,19656,23409,16138,23249,26379,30416,24721.5,27380,28490.45,40108,28033],
+    'Giovanna Panti':[15434,35331,28854.67,9082,14213,20529.5,11054,16925,11537,32608,24943,33254],
+    'Marco Macinai':[12172.48,45731,21136,10241,29265,16027,39425,9545,38133,25900,27570,15819],
+    'Mattia Guardiani':[0,2170,4705,700,1810,4755,930,3925,3770,3920,2680,450],
+    'Manuel Franceschini':[640,2500,1567,4440.7,4620,6145,3160,1147,3110,1120,850,1450],
+  },
+  taciti:{
+    'Roberto Macinai':[6915,4460,10181,2644,6202,12713,8617,1705,5785.33,10913.33,5205.33,6002],
+    'Massimo Necci':[5934,1332.5,8313.5,7674,5629.5,5425,7065,2028.5,2067,5751,2462.5,1963],
+    'Giovanna Panti':[7804,6595,10905,8963,12003,11720,5652,3413,1445,5415,6882,10241],
+    'Marco Macinai':[5064,1383.33,4625,3878,3021.33,5001,3484,5433.34,1505,4612,3299,7635],
+  },
+  incassato:{
+    'Roberto Macinai':[38678.82,21796.97,27590.22,39925.23,30843.66,32219.17,32581.88,43449.92,46469.01,27822.31,40901.07,47843.26],
+    'Massimo Necci':[26292.55,32260.16,36375.12,29148.74,32815.42,34387.67,56069.37,31414.8,36680.66,39838.18,18748.33,33288.93],
+    'Giovanna Panti':[21864.86,17865.27,29078.43,29828.73,38451.52,38967.15,33411.25,28638.71,15504.01,22426.36,27427.67,21696.76],
+    'Marco Macinai':[16339.43,17448.48,27449.16,6694.06,25793.2,23658.19,17866.8,37601.69,30594.94,28041.62,23726.89,12810.75],
+    'Mattia Guardiani':[0,793,2579.31,683.2,563.64,122,2896,2633.98,3321,1716.36,1605,1605],
+    'Manuel Franceschini':[0,899,395,1691.07,2710.26,4963.47,2567.8,1736.76,1715.97,4169.41,0,0],
+    'Francesco Pelliccia':[0,0,0,943.46,2793.8,534.76,1608.88,186.06,447,549,0,1291],
+  },
+},
+2026:{
+  venduto:{
+    'Roberto Macinai':[22427.13,23647.21,61840.98,9296.56,53210.08,8490,null,null,null,null,null,null],
+    'Massimo Necci':[38698.5,41007,37373,44656.5,43066,9809,null,null,null,null,null,null],
+    'Giovanna Panti':[19766.5,51092,37817,16269,7295,3574,null,null,null,null,null,null],
+    'Marco Macinai':[23693.69,34595.8,25730,11455,11708,11361.5,null,null,null,null,null,null],
+    'Mattia Guardiani':[1960,2290,5415,1260,2122.5,0,null,null,null,null,null,null],
+    'Davide Gaziano':[10516.87,7640,11073,22842.47,19054.21,0,null,null,null,null,null,null],
+    'Francesco Pelliccia':[0,1285,0,800,1002,0,null,null,null,null,null,null],
+    'Alberto Mancini':[2300,2030,5710,2335,6422.65,0,null,null,null,null,null,null],
+    'COMMERCIALE AR':[0,3290,20605,10470,1595,0,null,null,null,null,null,null],
+    'COMMERCIALE MR':[0,0,0,0,13770,0,null,null,null,null,null,null],
+  },
+  taciti:{
+    'Roberto Macinai':[12285,9338,13236,4230,9935,10311,null,null,null,null,null,null],
+    'Massimo Necci':[8390,5986.5,11195.5,7696,10085.5,5184,null,null,null,null,null,null],
+    'Giovanna Panti':[13464,15634,10281,9408,9765,10520,null,null,null,null,null,null],
+    'Marco Macinai':[8331,3595.33,5965,4313,7719.33,7075,null,null,null,null,null,null],
+    'Mattia Guardiani':[0,0,0,0,0,960,null,null,null,null,null,null],
+    'Davide Gaziano':[0,0,0,0,795,0,null,null,null,null,null,null],
+    'Francesco Pelliccia':[0,0,0,0,0,0,null,null,null,null,null,null],
+    'Alberto Mancini':[0,0,0,0,0,0,null,null,null,null,null,null],
+  },
+  incassato:{
+    // Roberto Macinai: dati non numerici nel file originale — usando dati BANCA
+    'Roberto Macinai':[27302.91,36254.6,29558.81,24587.53,29230.67,3555.4,null,null,null,null,null,null],
+    'Massimo Necci':[35693.91,27934.84,24134.83,32834.17,61270.14,15863.35,null,null,null,null,null,null],
+    'Giovanna Panti':[45718.08,34567.15,27931.23,44167.14,26935.97,6308.95,null,null,null,null,null,null],
+    'Marco Macinai':[27474.33,35007.37,23954.19,33253.34,9202.8,2854.8,null,null,null,null,null,null],
+    'Mattia Guardiani':[2139.09,0,2173.08,658.8,3927.01,0,null,null,null,null,null,null],
+    'Davide Gaziano':[9003.37,3524.8,4312.92,11204.46,10642.72,2492.69,null,null,null,null,null,null],
+    'Francesco Pelliccia':[183,0,1760,1546.47,9202.8,2854.8,null,null,null,null,null,null],
+    'Alberto Mancini':[2139.09,0,2173.08,658.8,3927.01,0,null,null,null,null,null,null],
+    'COMMERCIALE AR':[0,0,0,0,6304.8,305,null,null,null,null,null,null],
+    'COMMERCIALE MR':[0,0,0,0,9684.4,312.32,null,null,null,null,null,null],
+  },
+},
+};
+
+const allAgents=[...new Set([2024,2025,2026].flatMap(y=>['venduto','taciti','incassato'].flatMap(m=>Object.keys(DATA[y][m]))))];
+let currentMode='agenti';
+const charts={};
+
+function sv(v){return v!=null?v:0}
+function sumArr(arr){return(arr||[]).reduce((a,v)=>a+sv(v),0)}
+function sumAg(yr,m,ag){return sumArr(DATA[yr][m][ag])}
+function sumAllAg(yr,m){return allAgents.reduce((a,ag)=>a+sumAg(yr,m,ag),0)}
+function fmt(n){return'€'+Math.round(n).toLocaleString('it-IT')}
+function pct(a,b){if(!b)return'—';let v=((a-b)/b*100);return(v>=0?'+':'')+v.toFixed(1)+'%'}
+function pctClass(s){if(s==='—')return '';return s.startsWith('+')?'pos':'neg'}
+function destroy(id){if(charts[id]){charts[id].destroy();delete charts[id]}}
+
+function fillSelect(id,withAll,list){
+  const el=document.getElementById(id);if(!el)return;
+  const prev=el.value; el.innerHTML='';
+  if(withAll){const o=document.createElement('option');o.value='all';o.textContent='Tutti gli agenti';el.appendChild(o)}
+  (list||allAgents).forEach(ag=>{const o=document.createElement('option');o.value=ag;o.textContent=ag;el.appendChild(o)});
+  if([...el.options].some(o=>o.value===prev))el.value=prev;
+}
+
+function computeTot(agF){
+  const r={};
+  [2024,2025,2026].forEach(y=>{r[y]={};['venduto','taciti','incassato'].forEach(m=>{
+    r[y][m]=agF==='all'?sumAllAg(y,m):sumAg(y,m,agF)})});
+  return r;
+}
+
+// ── PANORAMICA ───────────────────────────────────────────────────────────
+function renderPanoramica(){
+  const ag=document.getElementById('ov-ag').value;
+  const T=computeTot(ag);
+  const v24=T[2024].venduto,v25=T[2025].venduto,v26=T[2026].venduto;
+  const i24=T[2024].incassato,i25=T[2025].incassato,i26=T[2026].incassato;
+  const p_vv=pct(v25,v24),p_vi=pct(i25,i24);
+  document.getElementById('ov-metrics').innerHTML=[
+    {l:'Venduto 2024',v:fmt(v24),s:'12 mesi',sc:''},
+    {l:'Venduto 2025',v:fmt(v25),s:p_vv+' vs 2024',sc:pctClass(p_vv)},
+    {l:'Venduto 2026',v:fmt(v26),s:'Gen–Giu',sc:''},
+    {l:'Incassato 2024',v:fmt(i24),s:'12 mesi',sc:''},
+    {l:'Incassato 2025',v:fmt(i25),s:p_vi+' vs 2024',sc:pctClass(p_vi)},
+    {l:'Incassato 2026',v:fmt(i26),s:'Gen–Giu',sc:''},
+  ].map(x=>`<div class="metric"><div class="metric-label">${x.l}</div><div class="metric-value">${x.v}</div><div class="metric-sub ${x.sc}">${x.s}</div></div>`).join('');
+
+  destroy('c-ov');
+  charts['c-ov']=new Chart(document.getElementById('c-ov'),{type:'bar',data:{labels:['2024','2025','2026 (parz.)'],datasets:[
+    {label:'Venduto',data:[T[2024].venduto,T[2025].venduto,T[2026].venduto],backgroundColor:'#1F3864',borderRadius:5},
+    {label:'Taciti rinnovi',data:[T[2024].taciti,T[2025].taciti,T[2026].taciti],backgroundColor:'#375623',borderRadius:5},
+    {label:'Incassato',data:[T[2024].incassato,T[2025].incassato,T[2026].incassato],backgroundColor:'#C0392B',borderRadius:5},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fmt(c.raw)}}},scales:{x:{ticks:{autoSkip:false}},y:{ticks:{callback:v=>'€'+Math.round(v/1000)+'k'}}}}});
+
+  destroy('c-gr');
+  const gd=[
+    T[2024].venduto?+((T[2025].venduto-T[2024].venduto)/T[2024].venduto*100).toFixed(1):0,
+    T[2024].taciti?+((T[2025].taciti-T[2024].taciti)/T[2024].taciti*100).toFixed(1):0,
+    T[2024].incassato?+((T[2025].incassato-T[2024].incassato)/T[2024].incassato*100).toFixed(1):0,
+  ];
+  charts['c-gr']=new Chart(document.getElementById('c-gr'),{type:'bar',indexAxis:'y',data:{labels:['Venduto','Taciti rinnovi','Incassato'],datasets:[{data:gd,backgroundColor:gd.map(v=>v>=0?'#37562388':'#C0392B88'),borderColor:gd.map(v=>v>=0?'#375623':'#C0392B'),borderWidth:2,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.raw+'%'}}},scales:{x:{ticks:{callback:v=>v+'%'}},y:{ticks:{autoSkip:false}}}}});
+
+  // 2026 bar chart per agente
+  destroy('c-ov2026');
+  const ags26=Object.keys(DATA[2026].venduto);
+  const mos26=months.slice(0,6);
+  const datasets26=ags26.map((ag,i)=>({
+    label:ag.length>15?ag.split(' ')[0]:ag,
+    data:(DATA[2026].venduto[ag]||[]).slice(0,6).map(v=>sv(v)),
+    backgroundColor:AG_COLORS[i%AG_COLORS.length],
+    borderRadius:3,
+  }));
+  charts['c-ov2026']=new Chart(document.getElementById('c-ov2026'),{type:'bar',data:{labels:mos26,datasets:datasets26},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmt(c.raw)}}},scales:{x:{stacked:false},y:{ticks:{callback:v=>'€'+Math.round(v/1000)+'k'}}}}});
+}
+
+// ── AGENTI ───────────────────────────────────────────────────────────────
+function renderAgenti(){
+  const metric=document.getElementById('ag-metric').value;
+  const lbl={venduto:'Venduto',taciti:'Taciti rinnovi',incassato:'Incassato'};
+  document.getElementById('ag-title').textContent=lbl[metric]+' per agente — tutti gli anni';
+  document.getElementById('ag-wrap').style.height=(allAgents.length*46+80)+'px';
+  destroy('c-ag');
+  charts['c-ag']=new Chart(document.getElementById('c-ag'),{type:'bar',indexAxis:'y',data:{labels:allAgents,datasets:[
+    {label:'2024',data:allAgents.map(a=>sumAg(2024,metric,a)),backgroundColor:'#1F386488',borderColor:'#1F3864',borderWidth:1,borderRadius:3},
+    {label:'2025',data:allAgents.map(a=>sumAg(2025,metric,a)),backgroundColor:'#37562388',borderColor:'#375623',borderWidth:1,borderRadius:3},
+    {label:'2026',data:allAgents.map(a=>sumAg(2026,metric,a)),backgroundColor:'#C0392B88',borderColor:'#C0392B',borderWidth:1,borderRadius:3},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>'€'+Math.round(v/1000)+'k'}},y:{ticks:{autoSkip:false,font:{size:11}}}}}});
+
+  // Agent cards 2026
+  const ags26=Object.keys(DATA[2026].venduto);
+  document.getElementById('agent-cards').innerHTML=ags26.map((ag,i)=>{
+    const vend=sumAg(2026,'venduto',ag);
+    const inc=sumAg(2026,'incassato',ag);
+    const col=AG_COLORS[i%AG_COLORS.length];
+    return `<div class="agent-card" style="border-left:4px solid ${col}">
+      <div class="agent-name">${ag}</div>
+      <div class="agent-kpis">
+        <div class="kpi-pill">Venduto <strong>${fmt(vend)}</strong></div>
+        <div class="kpi-pill">Incassato <strong>${fmt(inc)}</strong></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── MENSILE ──────────────────────────────────────────────────────────────
+let menChart=null;
+function renderMensile(){
+  const lbl={venduto:'Venduto',taciti:'Taciti rinnovi',incassato:'Incassato'};
+  let datasets=[],tableRows=[],title='';
+  if(currentMode==='agenti'){
+    const yr=+document.getElementById('ma-yr').value;
+    const metric=document.getElementById('ma-metric').value;
+    const ag=document.getElementById('ma-ag').value;
+    const mos=yr===2026?months.slice(0,6):months;
+    const agts=ag==='all'?Object.keys(DATA[yr][metric]||{}):[ag];
+    title=lbl[metric]+' mensile '+yr+(ag==='all'?'':' — '+ag);
+    document.getElementById('m-legend').innerHTML=agts.map(a=>`<span><span class="ld" style="background:${AG_COLORS[allAgents.indexOf(a)%AG_COLORS.length]||'#888'}"></span>${a}</span>`).join('');
+    datasets=agts.map((a,idx)=>({
+      label:a,data:(DATA[yr][metric][a]||[]).slice(0,mos.length).map(v=>sv(v)),
+      borderColor:AG_COLORS[allAgents.indexOf(a)%AG_COLORS.length]||'#888',
+      backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:.3,spanGaps:false,
+    }));
+    tableRows=[['Agente',...mos,'Totale'],...agts.map(a=>{
+      const r=(DATA[yr][metric][a]||[]).slice(0,mos.length);
+      return[a,...r.map(v=>v!=null?Math.round(v).toLocaleString('it-IT'):'—'),Math.round(sumArr(r)).toLocaleString('it-IT')];
+    })];
+    if(menChart){menChart.destroy();menChart=null}
+    menChart=new Chart(document.getElementById('c-men'),{type:'line',data:{labels:mos,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{autoSkip:false}},y:{ticks:{callback:v=>'€'+Math.round(v/1000)+'k'}}}}});
+  } else {
+    const ag=document.getElementById('mb-ag').value||allAgents[0];
+    const metric=document.getElementById('mb-metric').value;
+    const yrsOn=[[2024,document.getElementById('yr24').checked],[2025,document.getElementById('yr25').checked],[2026,document.getElementById('yr26').checked]].filter(([,on])=>on).map(([y])=>y);
+    title=lbl[metric]+' — '+ag+' — confronto anni';
+    document.getElementById('m-legend').innerHTML=yrsOn.map(y=>`<span><span class="ld" style="background:${yrColors[y]}"></span>${y}${y===2026?' (Gen–Giu)':''}</span>`).join('');
+    datasets=yrsOn.map(yr=>{
+      const raw=DATA[yr][metric][ag]||Array(12).fill(null);
+      const pts=yr===2026?[...raw.slice(0,6),...Array(6).fill(null)]:raw;
+      return{label:String(yr),data:pts.map(v=>sv(v)===0&&v===null?null:sv(v)),borderColor:yrColors[yr],backgroundColor:'transparent',borderWidth:2.5,borderDash:yrDash[yr],pointRadius:4,tension:.3,spanGaps:false};
+    });
+    tableRows=[['Mese',...yrsOn.map(String),...(yrsOn.length>1?['Δ ultimo/primo']:[])],
+      ...months.map((m,i)=>{
+        const vals=yrsOn.map(yr=>{const v=(DATA[yr][metric][ag]||[])[i];return v!=null?v:null});
+        const fv=vals.map(v=>v!=null?Math.round(v).toLocaleString('it-IT'):'—');
+        const delta=yrsOn.length>1&&vals[0]!=null&&vals[vals.length-1]!=null?pct(vals[vals.length-1],vals[0]):'—';
+        return[m,...fv,...(yrsOn.length>1?[delta]:[])];
+      })
+    ];
+    if(menChart){menChart.destroy();menChart=null}
+    menChart=new Chart(document.getElementById('c-men'),{type:'line',data:{labels:months,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{autoSkip:false}},y:{ticks:{callback:v=>'€'+Math.round(v/1000)+'k'}}}}});
+  }
+  document.getElementById('m-title').textContent=title;
+  const isDelta=currentMode==='anni'&&tableRows[0].length>2;
+  document.getElementById('m-table').innerHTML=tableRows.map((row,ri)=>`<tr>${row.map((cell,ci)=>{
+    const isH=ri===0;const isDC=isDelta&&ci===row.length-1&&ri>0;
+    let cls='';if(isDC&&cell!=='—')cls=cell.startsWith('+')?'delta-pos':'delta-neg';
+    return`<${isH?'th':'td'}${cls?' class="'+cls+'"':''}>${cell}</${isH?'th':'td'}>`;
+  }).join('')}</tr>`).join('');
+}
+
+function setMode(m){
+  currentMode=m;
+  document.getElementById('m-agenti').classList.toggle('active',m==='agenti');
+  document.getElementById('m-anni').classList.toggle('active',m==='anni');
+  document.getElementById('ctrl-agenti').style.display=m==='agenti'?'flex':'none';
+  document.getElementById('ctrl-anni').style.display=m==='anni'?'flex':'none';
+  if(m==='anni')fillSelect('mb-ag',false);
+  renderMensile();
+}
+
+// ── CONFRONTO MESI ───────────────────────────────────────────────────────
+function renderConfronto(){
+  const metric=document.getElementById('cf-metric').value;
+  const ag=document.getElementById('cf-ag').value;
+  const lbl={venduto:'Venduto',taciti:'Taciti rinnovi',incassato:'Incassato'};
+  document.getElementById('cf-title').textContent=lbl[metric]+' — confronto stesso mese ('+ag+')';
+  const agts=ag==='all'?null:ag;
+  const getVal=(yr,m_i)=>agts?sv((DATA[yr][metric][agts]||[])[m_i]):allAgents.reduce((a,a_)=>a+sv((DATA[yr][metric][a_]||[])[m_i]),0);
+
+  destroy('c-cf');
+  charts['c-cf']=new Chart(document.getElementById('c-cf'),{type:'bar',data:{labels:months,datasets:[
+    {label:'2024',data:months.map((_,i)=>getVal(2024,i)),backgroundColor:'#1F3864',borderRadius:3},
+    {label:'2025',data:months.map((_,i)=>getVal(2025,i)),backgroundColor:'#375623',borderRadius:3},
+    {label:'2026 (parz.)',data:months.slice(0,6).map((_,i)=>getVal(2026,i)).concat(Array(6).fill(null)),backgroundColor:'#C0392B',borderRadius:3},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:c=>' '+fmt(c.raw)}}},scales:{x:{ticks:{autoSkip:false}},y:{ticks:{callback:v=>'€'+Math.round(v/1000)+'k'}}}}});
+
+  // Delta charts
+  const mos6=months.slice(0,6);
+  const d1=mos6.map((_,i)=>{const a=getVal(2024,i),b=getVal(2025,i);return a?+((b-a)/a*100).toFixed(1):0});
+  const d2=mos6.map((_,i)=>{const a=getVal(2025,i),b=getVal(2026,i);return a?+((b-a)/a*100).toFixed(1):0});
+
+  destroy('c-d1');
+  charts['c-d1']=new Chart(document.getElementById('c-d1'),{type:'bar',data:{labels:mos6,datasets:[{data:d1,backgroundColor:d1.map(v=>v>=0?'#37562388':'#C0392B88'),borderColor:d1.map(v=>v>=0?'#375623':'#C0392B'),borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.raw+'%'}}},scales:{x:{ticks:{autoSkip:false}},y:{ticks:{callback:v=>v+'%'}}}}});
+
+  destroy('c-d2');
+  charts['c-d2']=new Chart(document.getElementById('c-d2'),{type:'bar',data:{labels:mos6,datasets:[{data:d2,backgroundColor:d2.map(v=>v>=0?'#37562388':'#C0392B88'),borderColor:d2.map(v=>v>=0?'#375623':'#C0392B'),borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.raw+'%'}}},scales:{x:{ticks:{autoSkip:false}},y:{ticks:{callback:v=>v+'%'}}}}});
+}
+
+// ── MIX ──────────────────────────────────────────────────────────────────
+const mixCharts={};
+function renderMix(){
+  Object.values(mixCharts).forEach(c=>c.destroy()); Object.keys(mixCharts).forEach(k=>delete mixCharts[k]);
+  const yr=document.getElementById('mix-yr').value;
+  const metric=document.getElementById('mix-metric').value;
+  const years=yr==='all'?[2024,2025,2026]:[+yr];
+  const ylabels={2024:'2024',2025:'2025',2026:'2026 (Gen–Giu)'};
+  const ids=['mpie0','mpie1','mpie2'];
+  const container=document.getElementById('mix-container');
+  container.innerHTML=yr==='all'
+    ?`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">${years.map((_,i)=>`<div class="card" style="padding:16px"><div class="card-title" style="justify-content:center">${ylabels[years[i]]}</div><div style="position:relative;height:240px"><canvas id="${ids[i]}"></canvas></div></div>`).join('')}</div>`
+    :`<div class="card"><div class="card-title">${ylabels[+yr]}</div><div style="position:relative;height:300px"><canvas id="${ids[0]}"></canvas></div></div>`;
+  years.forEach((y,i)=>{
+    const agts=Object.keys(DATA[y][metric]);
+    const vals=agts.map(a=>Math.round(sumArr(DATA[y][metric][a])));
+    const tot=vals.reduce((a,b)=>a+b,0);
+    mixCharts[ids[i]]=new Chart(document.getElementById(ids[i]),{type:'doughnut',data:{labels:agts,datasets:[{data:vals,backgroundColor:agts.map((_,j)=>PIE_COLORS[j%PIE_COLORS.length]),borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:c=>' '+fmt(c.raw)+' ('+((c.raw/tot)*100).toFixed(1)+'%)'}}}}});
+  });
+  const allA=[...new Set([2024,2025,2026].flatMap(y=>Object.keys(DATA[y][metric])))];
+  document.getElementById('mix-legend').innerHTML=allA.map((a,i)=>`<span><span class="ld" style="background:${PIE_COLORS[i%PIE_COLORS.length]}"></span><span style="font-size:11px">${a}</span></span>`).join('');
+}
+
+// ── TABELLE ───────────────────────────────────────────────────────────────
+function renderTabella(){
+  const yr=+document.getElementById('tb-yr').value;
+  const metric=document.getElementById('tb-metric').value;
+  const lbl={venduto:'Venduto',taciti:'Taciti rinnovi',incassato:'Incassato'};
+  document.getElementById('tb-title').textContent=lbl[metric]+' '+yr+' — dati mensili per agente';
+  const mos=yr===2026?months.slice(0,6):months;
+  const agts=Object.keys(DATA[yr][metric]||{});
+  const rows=[['Agente',...mos,'Totale'],...agts.map(ag=>{
+    const r=(DATA[yr][metric][ag]||[]).slice(0,mos.length);
+    return[ag,...r.map(v=>v!=null?Math.round(v).toLocaleString('it-IT'):'—'),Math.round(sumArr(r)).toLocaleString('it-IT')];
+  })];
+  const tots=['TOTALE',...mos.map((_,i)=>Math.round(agts.reduce((a,ag)=>a+sv((DATA[yr][metric][ag]||[])[i]),0)).toLocaleString('it-IT')),Math.round(agts.reduce((a,ag)=>a+sumArr((DATA[yr][metric][ag]||[]).slice(0,mos.length)),0)).toLocaleString('it-IT')];
+  document.getElementById('tb-table').innerHTML=[...rows,tots].map((row,ri)=>{
+    const isTot=ri===rows.length;
+    return`<tr${isTot?' class="tot"':''}>${row.map((cell,ci)=>`<${ri===0?'th':'td'}>${cell}</${ri===0?'th':'td'}>`).join('')}</tr>`;
+  }).join('');
+}
+
+// ── NAV ───────────────────────────────────────────────────────────────────
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.tab').forEach(t=>{if(t.getAttribute('onclick').includes("'"+id+"'"))t.classList.add('active')});
+  if(id==='panoramica'){fillSelect('ov-ag',true);renderPanoramica()}
+  else if(id==='agenti')renderAgenti()
+  else if(id==='mensile'){fillSelect('ma-ag',true);fillSelect('mb-ag',false);renderMensile()}
+  else if(id==='confronto'){fillSelect('cf-ag',true);renderConfronto()}
+  else if(id==='mix')renderMix()
+  else if(id==='tabelle')renderTabella()
+}
+
+// Download self
+document.getElementById('dl-html').addEventListener('click',function(){
+  const blob=new Blob([document.documentElement.outerHTML],{type:'text/html'});
+  this.href=URL.createObjectURL(blob);
+});
+
+// Init
+fillSelect('ov-ag',true);
+fillSelect('ma-ag',true);
+fillSelect('mb-ag',false);
+fillSelect('cf-ag',true);
+renderPanoramica();
+</script>
+
+
+</body></html>
