@@ -447,6 +447,7 @@ tr.tot td{background:#e8f0fb;font-weight:700;color:var(--navy)}
 
 <div class="tabs" id="tabs">
   <div class="tab active" onclick="showPage('panoramica')">Panoramica anni</div>
+  <div class="tab" onclick="showPage('andamento')">Andamento SSI</div>
   <div class="tab" onclick="showPage('agenti')">Agenti</div>
   <div class="tab" onclick="showPage('mensile')">Andamento mensile</div>
   <div class="tab" onclick="showPage('confronto')">Confronto mesi</div>
@@ -472,6 +473,29 @@ tr.tot td{background:#e8f0fb;font-weight:700;color:var(--navy)}
   </div>
   <div class="card"><div class="card-title">Venduto mensile 2026 — tutti gli agenti (Gen–Giu)</div>
     <div class="chart-wrap" style="height:220px"><canvas id="c-ov2026" style="box-sizing: border-box; display: block; height: 220px; width: 541px;" width="1082" height="440"></canvas></div></div>
+</div>
+
+<!-- ANDAMENTO SSI -->
+<div id="andamento" class="page">
+  <div class="metrics" id="and-metrics"></div>
+  <div class="card">
+    <div class="card-title">Venduto + Taciti rinnovi — totale SSI mensile</div>
+    <div class="legend">
+      <span><span class="ld" style="background:#1F3864"></span>2024</span>
+      <span><span class="ld" style="background:#375623"></span>2025</span>
+      <span><span class="ld" style="background:#C0392B"></span>2026 (Gen–Giu)</span>
+    </div>
+    <div class="chart-wrap" style="height:280px"><canvas id="c-and-vt"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Incassato — totale SSI mensile</div>
+    <div class="legend">
+      <span><span class="ld" style="background:#1F3864"></span>2024</span>
+      <span><span class="ld" style="background:#375623"></span>2025</span>
+      <span><span class="ld" style="background:#C0392B"></span>2026 (Gen–Giu)</span>
+    </div>
+    <div class="chart-wrap" style="height:280px"><canvas id="c-and-inc"></canvas></div>
+  </div>
 </div>
 
 <!-- AGENTI -->
@@ -1039,6 +1063,67 @@ renderPanoramica();
 </div>
 
 <script>
+// ── ANDAMENTO SSI ────────────────────────────────────────────────────────
+function renderAndamento(){
+  // Somma mensile su tutti gli agenti
+  function moSum(yr,metric){
+    const maxMo=yr===2026?6:12;
+    return months.map((_,mi)=>{
+      if(mi>=maxMo)return null;
+      return Object.keys(DATA[yr][metric]||{}).reduce((s,ag)=>s+sv((DATA[yr][metric][ag]||[])[mi]),0);
+    });
+  }
+  function vtSum(yr){
+    const maxMo=yr===2026?6:12;
+    return months.map((_,mi)=>{
+      if(mi>=maxMo)return null;
+      const v=Object.keys(DATA[yr].venduto||{}).reduce((s,ag)=>s+sv((DATA[yr].venduto[ag]||[])[mi]),0);
+      const t=Object.keys(DATA[yr].taciti||{}).reduce((s,ag)=>s+sv((DATA[yr].taciti[ag]||[])[mi]),0);
+      return v+t;
+    });
+  }
+  const cfg=(data,label,color,dash)=>({
+    label,data,borderColor:color,backgroundColor:'transparent',
+    borderWidth:2.5,pointRadius:5,tension:.3,spanGaps:false,borderDash:dash
+  });
+  // Chart 1 — Venduto+Taciti
+  destroy('c-and-vt');
+  charts['c-and-vt']=new Chart(document.getElementById('c-and-vt'),{type:'line',
+    data:{labels:months,datasets:[
+      cfg(vtSum(2024),'2024','#1F3864',[]),
+      cfg(vtSum(2025),'2025','#375623',[8,4]),
+      cfg(vtSum(2026),'2026 (Gen–Giu)','#C0392B',[3,3]),
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{ticks:{autoSkip:false}},y:{ticks:{callback:v=>'€'+Math.round(v/1000)+'k'}}}}});
+  // Chart 2 — Incassato
+  destroy('c-and-inc');
+  charts['c-and-inc']=new Chart(document.getElementById('c-and-inc'),{type:'line',
+    data:{labels:months,datasets:[
+      cfg(moSum(2024,'incassato'),'2024','#1F3864',[]),
+      cfg(moSum(2025,'incassato'),'2025','#375623',[8,4]),
+      cfg(moSum(2026,'incassato'),'2026 (Gen–Giu)','#C0392B',[3,3]),
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{ticks:{autoSkip:false}},y:{ticks:{callback:v=>'€'+Math.round(v/1000)+'k'}}}}});
+  // Metric cards
+  const vt26=vtSum(2026).reduce((s,v)=>s+(v||0),0);
+  const vt25p=vtSum(2025).slice(0,6).reduce((s,v)=>s+(v||0),0);
+  const inc26=moSum(2026,'incassato').reduce((s,v)=>s+(v||0),0);
+  const inc25p=moSum(2025,'incassato').slice(0,6).reduce((s,v)=>s+(v||0),0);
+  const vt26full=vtSum(2026).reduce((s,v)=>s+(v||0),0); // same as vt26
+  const vend26=Object.keys(DATA[2026].venduto).reduce((s,ag)=>s+sumArr((DATA[2026].venduto[ag]||[]).slice(0,6)),0);
+  const ratio=vend26>0?Math.round(inc26/vend26*100):0;
+  const dvt=pct(vt26,vt25p), dinc=pct(inc26,inc25p);
+  document.getElementById('and-metrics').innerHTML=[
+    {l:'Venduto+Taciti YTD 2026',v:fmt(vt26),s:dvt+' vs 2025 stesso periodo',sc:pctClass(dvt)},
+    {l:'Incassato YTD 2026',v:fmt(inc26),s:dinc+' vs 2025 stesso periodo',sc:pctClass(dinc)},
+    {l:'Incassato / Venduto 2026',v:ratio+'%',s:'Gen–Giu 2026',sc:ratio>=80?'pos':ratio>=50?'':'neg'},
+  ].map(x=>`<div class="metric"><div class="metric-label">${x.l}</div><div class="metric-value">${x.v}</div><div class="metric-sub ${x.sc}">${x.s}</div></div>`).join('');
+}
+
 // ── MULTI-AGENTE ──────────────────────────────────────────────────────────
 let selectedAgents2=new Set();
 let ma2Mode='total';
@@ -1227,6 +1312,7 @@ function showPage(id){
   document.getElementById(id).classList.add('active');
   document.querySelectorAll('.tab').forEach(t=>{if(t.getAttribute('onclick').includes("'"+id+"'"))t.classList.add('active')});
   if(id==='panoramica'){fillSelect('ov-ag',true);renderPanoramica()}
+  else if(id==='andamento')renderAndamento()
   else if(id==='agenti')renderAgenti()
   else if(id==='mensile'){fillSelect('ma-ag',true);fillSelect('mb-ag',false);renderMensile()}
   else if(id==='confronto'){fillSelect('cf-ag',true);renderConfronto()}
