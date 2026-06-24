@@ -1837,9 +1837,7 @@ function scBuildCrescitaConfronto(){
 }
 
 // ── TABELLA ANDAMENTO SETTIMANALE ───────────────────────────
-let _scSettTableBuilt=false;
 function scBuildSettTable(){
-  if(_scSettTableBuilt)return;_scSettTableBuilt=true;
   const wrap=document.getElementById('sc-sett-table-wrap');if(!wrap)return;
   const settD=((SC_SETT[2026]||{})[6])||{};
   const fmtE=n=>n>0?'€'+Math.round(n).toLocaleString('it-IT'):'—';
