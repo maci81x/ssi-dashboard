@@ -448,6 +448,14 @@ tr.tot td{background:#e8f0fb;font-weight:700;color:var(--navy)}
 .sc-tab:hover{border-color:var(--navy);color:var(--navy)}
 .sc-tab.active{background:var(--navy);border-color:var(--navy);color:#fff;font-weight:600}
 .sc-pane{display:none}.sc-pane.active{display:block}
+.sc-view-bar{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+.sc-view-btn{padding:6px 16px;border:1.5px solid var(--border);border-radius:16px;font-size:12px;cursor:pointer;background:#fff;color:var(--dgrey);font-family:inherit;transition:all .15s}
+.sc-view-btn:hover{border-color:var(--navy);color:var(--navy)}
+.sc-view-btn.active{background:var(--navy);border-color:var(--navy);color:#fff;font-weight:600}
+.sc-cres-view{display:none}.sc-cres-view.active{display:block}
+.sc-ag-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+.sc-conf-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:680px){.sc-ag-grid,.sc-conf-grid{grid-template-columns:1fr}}
 .sc-card{background:#fff;border-radius:8px;border:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,.05);margin-bottom:14px}
 .sc-card-inner{padding:14px 18px}
 .sc-card-title{font-size:12px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.04em;margin-bottom:12px}
@@ -1636,6 +1644,150 @@ function scBuildCrescita(){
   container.innerHTML=html;
 }
 
+// ── CRESCITA — TOGGLE VISTE ────────────────────────────────
+let _scGraficiBuilt=false,_scConfrontoBuilt=false;
+function scCrescitaView(v){
+  ['card','grafici','confronto'].forEach(k=>{
+    const btn=document.getElementById('scvb-'+k);
+    const panel=document.getElementById('scv-'+k);
+    if(btn)btn.classList.toggle('active',k===v);
+    if(panel)panel.classList.toggle('active',k===v);
+  });
+  if(v==='card'){const c=document.getElementById('sc-crescita-container');if(c&&!c.innerHTML)scBuildCrescita();}
+  if(v==='grafici'&&!_scGraficiBuilt){_scGraficiBuilt=true;scBuildCrescitaGrafici();}
+  if(v==='confronto'&&!_scConfrontoBuilt){_scConfrontoBuilt=true;scBuildCrescitaConfronto();}
+}
+
+// ── VISTA GRAFICI — barre mensili per agente ────────────────
+function scBuildCrescitaGrafici(){
+  const cont=document.getElementById('sc-crescita-grafici');if(!cont)return;
+  const areaGroups=[
+    {label:'Area Fiorentina',agents:['Alessandro Raia','Mario Rufolo','Alberto Mancini']},
+    {label:'Area Senese',agents:['Davide Gaziano','Massimo Necci','Gigliola Gorini','Mattia Guardiani','Francesco Pelliccia']},
+    {label:'Direzione',agents:['Marco Macinai','Giovanna Panti','Roberto Macinai']},
+  ];
+  let html='';
+  areaGroups.forEach(({label,agents})=>{
+    const vis=agents.filter(ag=>SC_V26[ag]!==undefined);
+    if(!vis.length)return;
+    html+=`<div style="margin-bottom:22px">
+      <div style="font-size:11px;font-weight:700;color:#fff;background:var(--navy);padding:4px 14px;border-radius:8px 8px 0 0;display:inline-block;text-transform:uppercase;letter-spacing:.05em">${label}</div>
+      <div style="background:#fff;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:14px" class="sc-ag-grid">`;
+    vis.forEach(ag=>{
+      const agId=ag.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
+      html+=`<div>
+        <div style="font-size:12px;font-weight:600;color:var(--navy);margin-bottom:6px">${ag}</div>
+        <div style="position:relative;height:150px"><canvas id="scg-${agId}"></canvas></div>
+      </div>`;
+    });
+    html+='</div></div>';
+  });
+  cont.innerHTML=html;
+  areaGroups.forEach(({agents})=>{
+    agents.filter(ag=>SC_V26[ag]!==undefined).forEach(ag=>{
+      const agId=ag.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
+      const canvas=document.getElementById('scg-'+agId);if(!canvas)return;
+      const d26=(SC_V26[ag]||[]).map(v=>v||0);
+      const has25=!!(SC_V25[ag]&&SC_V25[ag].some(v=>v>0));
+      const datasets=[];
+      if(has25)datasets.push({label:'2025',data:(SC_V25[ag]||[]).slice(0,6).map(v=>v||0),backgroundColor:'rgba(55,86,35,.35)',borderColor:'#375623',borderWidth:1.5,borderRadius:3});
+      datasets.push({label:'2026',data:d26,backgroundColor:'rgba(31,56,100,.8)',borderColor:'#1F3864',borderWidth:0,borderRadius:3});
+      new Chart(canvas,{type:'bar',
+        data:{labels:['Gen','Feb','Mar','Apr','Mag','Giu'],datasets},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:10}}},
+            tooltip:{callbacks:{label:c=>'€'+Math.round(c.raw).toLocaleString('it-IT')}}},
+          scales:{y:{ticks:{callback:v=>v>=1000?(Math.round(v/1000)+'k'):''+Math.round(v)},grid:{color:'rgba(0,0,0,.06)'}},
+            x:{grid:{display:false}}}}});
+    });
+  });
+}
+
+// ── VISTA CONFRONTO — 4 chart analitici ────────────────────
+function scBuildCrescitaConfronto(){
+  const cont=document.getElementById('sc-crescita-confronto');if(!cont)return;
+  const tk=v=>v>=1000?(Math.round(v/1000)+'k'):''+Math.round(v);
+  const fmtN=n=>'€'+Math.round(n).toLocaleString('it-IT');
+
+  const donutAg=SC_AGENTS.filter(ag=>scSum(SC_V26,ag)>0);
+  const donutVals=donutAg.map(ag=>Math.round(scSum(SC_V26,ag)));
+  const donutColors=donutAg.map((_,i)=>SC_COLORS[i%SC_COLORS.length]);
+
+  const yoyAg=SC_AGENTS.filter(ag=>SC_V25[ag]&&SC_V26[ag]);
+  const ytd25=yoyAg.map(ag=>(SC_V25[ag]||[]).slice(0,6).reduce((s,v)=>s+(v||0),0));
+  const ytd26=yoyAg.map(ag=>scSum(SC_V26,ag));
+  const yoySorted=yoyAg.map((ag,i)=>({ag,d:ytd25[i]>0?+((ytd26[i]-ytd25[i])/ytd25[i]*100).toFixed(1):null}))
+    .filter(x=>x.d!==null).sort((a,b)=>a.d-b.d);
+
+  const allA24=Object.keys(DATA[2024].venduto);
+  const allA25=Object.keys(DATA[2025].venduto);
+  const allA26=Object.keys(DATA[2026].venduto);
+  const trend24=Array.from({length:12},(_,i)=>allA24.reduce((s,ag)=>s+sv((DATA[2024].venduto[ag]||[])[i]),0));
+  const trend25=Array.from({length:12},(_,i)=>allA25.reduce((s,ag)=>s+sv((DATA[2025].venduto[ag]||[])[i]),0));
+  const trend26=Array.from({length:6},(_,i)=>allA26.reduce((s,ag)=>s+sv((DATA[2026].venduto[ag]||[])[i]),0));
+
+  const cmpAg=SC_AGENTS.filter(ag=>SC_V25[ag]||SC_V26[ag]);
+  const cmp25=cmpAg.map(ag=>(SC_V25[ag]||[]).slice(0,6).reduce((s,v)=>s+(v||0),0));
+  const cmp26=cmpAg.map(ag=>scSum(SC_V26,ag));
+
+  cont.innerHTML=`
+    <div class="sc-conf-grid">
+      <div class="sc-card sc-card-inner">
+        <div class="sc-card-title">Quota % venduto YTD 2026 per agente</div>
+        <div style="position:relative;height:220px"><canvas id="scc-donut"></canvas></div>
+      </div>
+      <div class="sc-card sc-card-inner">
+        <div class="sc-card-title">YoY Δ% Gen–Giu 2025 → 2026 (verde ≥40%, rosso &lt;0%)</div>
+        <div style="position:relative;height:220px"><canvas id="scc-yoy"></canvas></div>
+      </div>
+    </div>
+    <div class="sc-card sc-card-inner" style="margin-bottom:14px">
+      <div class="sc-card-title">Trend mensile aziendale — venduto 2024 / 2025 / 2026</div>
+      <div style="position:relative;height:220px"><canvas id="scc-trend"></canvas></div>
+    </div>
+    <div class="sc-card sc-card-inner">
+      <div class="sc-card-title">Venduto Gen–Giu: 2025 vs 2026 per agente</div>
+      <div style="position:relative;height:260px"><canvas id="scc-cmp"></canvas></div>
+    </div>`;
+
+  new Chart(document.getElementById('scc-donut'),{type:'doughnut',
+    data:{labels:donutAg,datasets:[{data:donutVals,backgroundColor:donutColors,borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:10}}},
+        tooltip:{callbacks:{label:c=>{const tot=c.dataset.data.reduce((a,b)=>a+b,0);return c.label+': '+Math.round(c.raw/tot*100)+'% ('+fmtN(c.raw)+')';}}}}}});
+
+  new Chart(document.getElementById('scc-yoy'),{type:'bar',
+    data:{labels:yoySorted.map(x=>x.ag.split(' ').slice(-1)[0]),datasets:[{
+      label:'YoY Δ%',data:yoySorted.map(x=>x.d),
+      backgroundColor:yoySorted.map(x=>x.d<0?'#C0392B':x.d>=40?'#375623':'#BF8F00'),
+      borderWidth:0,borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>(c.raw>=0?'+':'')+c.raw+'%'}}},
+      scales:{x:{ticks:{callback:v=>v+'%'},grid:{color:'rgba(0,0,0,.06)'}},y:{ticks:{font:{size:10}}}}}});
+
+  const trendLbls=['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+  new Chart(document.getElementById('scc-trend'),{type:'line',
+    data:{labels:trendLbls,datasets:[
+      {label:'2024',data:trend24,borderColor:'#aaa',backgroundColor:'transparent',borderWidth:1.5,pointRadius:3,tension:.3},
+      {label:'2025',data:trend25,borderColor:'#375623',backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:.3},
+      {label:'2026',data:[...trend26,...Array(6).fill(null)],borderColor:'#1F3864',backgroundColor:'transparent',borderWidth:2.5,pointRadius:3,tension:.3}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}},
+        tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtN(c.raw)}}},
+      scales:{y:{ticks:{callback:tk},grid:{color:'rgba(0,0,0,.06)'}},x:{grid:{display:false}}}}});
+
+  new Chart(document.getElementById('scc-cmp'),{type:'bar',
+    data:{labels:cmpAg.map(ag=>ag.split(' ').slice(-1)[0]),datasets:[
+      {label:'Gen–Giu 2025',data:cmp25,backgroundColor:'rgba(55,86,35,.6)',borderWidth:0,borderRadius:3},
+      {label:'Gen–Giu 2026',data:cmp26,backgroundColor:'rgba(31,56,100,.8)',borderWidth:0,borderRadius:3}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}},
+        tooltip:{callbacks:{label:c=>'€'+Math.round(c.raw).toLocaleString('it-IT')}}},
+      scales:{y:{ticks:{callback:tk},grid:{color:'rgba(0,0,0,.06)'}},x:{ticks:{font:{size:10}},grid:{display:false}}}}});
+}
+
 // GRAFICI
 let scChartsBuilt=false;
 function scBuildCharts(){
@@ -1784,11 +1936,27 @@ window.showPage=function(id){
 <!-- CRESCITA -->
 <div class="sc-pane" id="scp-crescita">
   <div class="sc-slbl">Crescita per agente — MoM, YoY, nuovi clienti, contributo aziendale</div>
-  <div class="sc-note" style="margin-bottom:12px">
-    YoY confronta il mese inserito in input vs stesso mese 2025 (storico dashboard).
-    MoM confronta mese corrente vs mese precedente. Inserisci prima i dati in <a href="input.html">input.html</a>.
+  <div class="sc-view-bar">
+    <button id="scvb-card"      class="sc-view-btn active" onclick="scCrescitaView('card')">📋 Card</button>
+    <button id="scvb-grafici"   class="sc-view-btn"        onclick="scCrescitaView('grafici')">📈 Grafici</button>
+    <button id="scvb-confronto" class="sc-view-btn"        onclick="scCrescitaView('confronto')">🏆 Confronto</button>
   </div>
-  <div id="sc-crescita-container"></div>
+  <!-- vista CARD (esistente) -->
+  <div class="sc-cres-view active" id="scv-card">
+    <div class="sc-note" style="margin-bottom:12px">
+      YoY confronta il mese inserito in input vs stesso mese 2025 (storico dashboard).
+      MoM confronta mese corrente vs mese precedente. Inserisci prima i dati in <a href="input.html">input.html</a>.
+    </div>
+    <div id="sc-crescita-container"></div>
+  </div>
+  <!-- vista GRAFICI -->
+  <div class="sc-cres-view" id="scv-grafici">
+    <div id="sc-crescita-grafici"></div>
+  </div>
+  <!-- vista CONFRONTO -->
+  <div class="sc-cres-view" id="scv-confronto">
+    <div id="sc-crescita-confronto"></div>
+  </div>
 </div>
 
 <!-- GRAFICI -->
