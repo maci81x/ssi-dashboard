@@ -1406,6 +1406,26 @@ const SC_V26 = {
   'Mario Rufolo':       [0,0,0,0,13770,0],
   'Gigliola Gorini':    [0,0,0,0,0,0],
 };
+const SC_SETT = {
+  2026: {
+    6: {
+      'Roberto Macinai':    [8490, 30307.5],
+      'Massimo Necci':      [9809, 30868],
+      'Giovanna Panti':     [3574, 18944],
+      'Marco Macinai':      [11361.5, 17356.5],
+      'Davide Gaziano':     [0, 21061.17],
+      'Mattia Guardiani':   [0, 1910],
+      'Mario Rufolo':       [0, 5260],
+      'Alessandro Raia':    [0, 0],
+      'Alberto Mancini':    [0, 0],
+      'Francesco Pelliccia':[0, 0],
+      'Gigliola Gorini':    [0, 0],
+    }
+  }
+};
+const SC_SETT_LABELS = {
+  2026: { 6: ['Sett 1-13', 'Sett 15-19'] }
+};
 const SC_I26 = {
   'Roberto Macinai':    [27302.91,36254.6,29558.81,24587.53,29230.67,3555.4],
   'Massimo Necci':      [35693.91,27934.84,24134.83,32834.17,61270.14,15863.35],
@@ -1661,6 +1681,16 @@ function scCrescitaView(v){
 // ── VISTA GRAFICI — barre mensili per agente ────────────────
 function scBuildCrescitaGrafici(){
   const cont=document.getElementById('sc-crescita-grafici');if(!cont)return;
+  // Legge il periodo più recente in SC_SETT
+  const settYears=Object.keys(SC_SETT||{}).map(Number).sort((a,b)=>b-a);
+  const settYear=settYears[0]||null;
+  const settMonths=settYear?Object.keys(SC_SETT[settYear]).map(Number).sort((a,b)=>b-a):[];
+  const settMonth=settMonths[0]||null;
+  const settData=settYear&&settMonth?SC_SETT[settYear][settMonth]:{};
+  const settLabels=(SC_SETT_LABELS&&settYear&&settMonth
+    &&SC_SETT_LABELS[settYear]&&SC_SETT_LABELS[settYear][settMonth])
+    ||(Object.values(settData)[0]||[]).map((_,i)=>`Sett ${i+1}`);
+  const settMonthName=settMonth?MESI_LABELS[settMonth-1]:'';
   const areaGroups=[
     {label:'Area Fiorentina',agents:['Alessandro Raia','Mario Rufolo','Alberto Mancini']},
     {label:'Area Senese',agents:['Davide Gaziano','Massimo Necci','Gigliola Gorini','Mattia Guardiani','Francesco Pelliccia']},
@@ -1675,9 +1705,11 @@ function scBuildCrescitaGrafici(){
       <div style="background:#fff;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:14px" class="sc-ag-grid">`;
     vis.forEach(ag=>{
       const agId=ag.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
+      const hasSett=(settData[ag]||[]).some(v=>v>0);
       html+=`<div>
         <div style="font-size:12px;font-weight:600;color:var(--navy);margin-bottom:6px">${ag}</div>
         <div style="position:relative;height:150px"><canvas id="scg-${agId}"></canvas></div>
+        ${hasSett?`<div style="font-size:10px;color:var(--dgrey);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin:8px 0 4px">${settMonthName} — cumulato settimane</div><div style="position:relative;height:120px"><canvas id="scs-${agId}"></canvas></div>`:''}
       </div>`;
     });
     html+='</div></div>';
@@ -1699,6 +1731,22 @@ function scBuildCrescitaGrafici(){
             tooltip:{callbacks:{label:c=>'€'+Math.round(c.raw).toLocaleString('it-IT')}}},
           scales:{y:{ticks:{callback:v=>v>=1000?(Math.round(v/1000)+'k'):''+Math.round(v)},grid:{color:'rgba(0,0,0,.06)'}},
             x:{grid:{display:false}}}}});
+      // Grafico cumulato settimanale
+      const settVals=(settData[ag]||[]);
+      if(settVals.some(v=>v>0)){
+        const sc=document.getElementById('scs-'+agId);if(!sc)return;
+        new Chart(sc,{type:'line',
+          data:{labels:settLabels,datasets:[{
+            label:'MTD cumulato',data:settVals,
+            borderColor:'#1F3864',backgroundColor:'rgba(31,56,100,.12)',
+            fill:true,tension:.3,pointRadius:5,pointBackgroundColor:'#1F3864',borderWidth:2
+          }]},
+          options:{responsive:true,maintainAspectRatio:false,
+            plugins:{legend:{display:false},
+              tooltip:{callbacks:{label:c=>'€'+Math.round(c.raw).toLocaleString('it-IT')}}},
+            scales:{y:{min:0,ticks:{callback:v=>v>=1000?(Math.round(v/1000)+'k'):''+Math.round(v)},grid:{color:'rgba(0,0,0,.06)'}},
+              x:{grid:{display:false}}}}});
+      }
     });
   });
 }
