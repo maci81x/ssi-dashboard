@@ -500,7 +500,7 @@ tr.tot td{background:#e8f0fb;font-weight:700;color:var(--navy)}
 <div class="topbar">
   <div>
     <h1>SSI Soluzioni Impresa — Dashboard Vendite 2024–2026</h1>
-    <div class="sub" id="ts">Dati aggiornati al: 11 giugno 2026</div>
+    <div class="sub" id="ts">Dati aggiornati al: 19 giugno 2026</div>
   </div>
   <div style="display:flex;gap:8px">
     <a href="input.html" style="font-size:12px;padding:6px 14px;background:rgba(255,255,255,.15);color:#fff;border-radius:5px;text-decoration:none;border:1px solid rgba(255,255,255,.3);margin-right:6px">✏️ Inserisci dati</a>
@@ -1394,16 +1394,16 @@ function showPage(id){
 // ══════════════════════════════════════════════════════════════
 
 const SC_V26 = {
-  'Roberto Macinai':    [22427.13,23647.21,61840.98,9296.56,53210.08,8490],
-  'Massimo Necci':      [38698.5,41007,37373,44656.5,43066,9809],
-  'Giovanna Panti':     [19766.5,51092,37817,16269,7295,3574],
-  'Marco Macinai':      [23693.69,34595.8,25730,11455,11708,11361.5],
-  'Mattia Guardiani':   [1960,2290,5415,1260,2122.5,0],
-  'Davide Gaziano':     [10516.87,7640,11073,22842.47,19054.21,0],
+  'Roberto Macinai':    [22427.13,23647.21,61840.98,9296.56,53210.08,30307.5],
+  'Massimo Necci':      [38698.5,41007,37373,44656.5,43066,30868],
+  'Giovanna Panti':     [19766.5,51092,37817,16269,7295,18944],
+  'Marco Macinai':      [23693.69,34595.8,25730,11455,11708,17356.5],
+  'Mattia Guardiani':   [1960,2290,5415,1260,2122.5,1910],
+  'Davide Gaziano':     [10516.87,7640,11073,22842.47,19054.21,21061.17],
   'Francesco Pelliccia':[0,1285,0,800,1002,0],
   'Alberto Mancini':    [2300,2030,5710,2335,6422.65,0],
   'Alessandro Raia':    [0,3290,20605,10470,1595,0],
-  'Mario Rufolo':       [0,0,0,0,13770,0],
+  'Mario Rufolo':       [0,0,0,0,13770,5260],
   'Gigliola Gorini':    [0,0,0,0,0,0],
 };
 const SC_SETT = {
@@ -1508,7 +1508,7 @@ function scPct(n){return Math.round(n)+'%';}
 
 // Sub-tab switch
 function scTab(id){
-  const ids=['ranking','crescita','grafici','monitor','soglie','decisioni'];
+  const ids=['ranking','crescita','grafici','lead','monitor','soglie','decisioni'];
   document.querySelectorAll('.sc-tab').forEach((t,i)=>t.classList.toggle('active',ids[i]===id));
   document.querySelectorAll('.sc-pane').forEach(p=>p.classList.toggle('active',p.id==='scp-'+id));
   if(id==='grafici')scBuildCharts();
@@ -1950,6 +1950,7 @@ window.showPage=function(id){
   <button class="sc-tab active" onclick="scTab('ranking')">🏆 Ranking agenti</button>
   <button class="sc-tab" onclick="scTab('crescita')">📈 Crescita agenti</button>
   <button class="sc-tab" onclick="scTab('grafici')">📊 Grafici KPI</button>
+  <button class="sc-tab" onclick="scTab('lead')">📋 Lead & Crediti</button>
   <button class="sc-tab" onclick="scTab('monitor')">🕐 Monitoraggio</button>
   <button class="sc-tab" onclick="scTab('soglie')">🚦 Soglie</button>
   <button class="sc-tab" onclick="scTab('decisioni')">✅ Decisioni</button>
@@ -2028,6 +2029,29 @@ window.showPage=function(id){
   <div class="sc-card sc-card-inner" style="margin-bottom:14px">
     <div class="sc-card-title">Nuovi clienti per agente — mese corrente da input.html</div>
     <div class="sc-chart-wrap"><canvas id="sc-chart-nuovi"></canvas></div>
+  </div>
+</div>
+
+<!-- LEAD & CREDITI -->
+<div class="sc-pane" id="scp-lead">
+  <div class="sc-slbl">Lead ricevuti e lavorati — Recupero crediti</div>
+  <div class="sc-card sc-card-inner" style="overflow:hidden">
+    <table class="sc-table">
+      <thead><tr>
+        <th style="width:18%">Agente</th>
+        <th class="num">Lead CCIAA<br>ricevuti</th>
+        <th class="num">Lead CCIAA<br>lavorati</th>
+        <th class="num">Lead MKT<br>ricevuti</th>
+        <th class="num">Lead MKT<br>lavorati</th>
+        <th class="num">% lavorati</th>
+        <th class="num">Recupero<br>crediti €</th>
+      </tr></thead>
+      <tbody id="sc-lead-tbody">
+        <tr><td colspan="7" style="text-align:center;color:var(--dgrey);font-style:italic;padding:16px">
+          Carica Excel con colonne J-O compilate
+        </td></tr>
+      </tbody>
+    </table>
   </div>
 </div>
 
