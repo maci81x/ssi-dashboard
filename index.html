@@ -1840,18 +1840,18 @@ function scBuildCrescitaConfronto(){
 function scBuildSettTable(){
   const wrap=document.getElementById('sc-sett-table-wrap');if(!wrap)return;
   const settD=((SC_SETT[2026]||{})[6])||{};
+  const settLabels=((SC_SETT_LABELS[2026]||{})[6])||[];
   const fmtE=n=>n>0?'€'+Math.round(n).toLocaleString('it-IT'):'—';
   const sem=v=>v>5000?'🟢':v>=1000?'🟡':'🔴';
+  const semClr=v=>v>5000?'#27AE60':v>=1000?'#F39C12':'#C0392B';
   const ord=n=>n+'°';
-  // calcola venduto settimana e MTD per ogni agente
   const agData={};
   Object.keys(settD).forEach(ag=>{
     const vals=settD[ag]||[];
     const mtd=vals.length>1?vals[vals.length-1]:(vals[0]||0);
     const prev=vals.length>1?vals[vals.length-2]:0;
-    agData[ag]={week:Math.round((mtd-prev)*100)/100,mtd};
+    agData[ag]={week:Math.round((mtd-prev)*100)/100,mtd,vals};
   });
-  // ranking globale per venduto settimana decrescente
   const ranked=Object.keys(agData).filter(ag=>agData[ag].week>0)
     .sort((a,b)=>agData[b].week-agData[a].week);
   const rankOf=ag=>{const i=ranked.indexOf(ag);return i>=0?i+1:null;};
@@ -1875,6 +1875,12 @@ function scBuildSettTable(){
       </tr>`;
     });
   });
+  // dati per i grafici
+  const barAgs=ranked;
+  const barVals=barAgs.map(ag=>agData[ag].week);
+  const barClrs=barVals.map(v=>semClr(v));
+  const lineAgs=Object.keys(settD).filter(ag=>(settD[ag]||[]).some(v=>v>0));
+  const lineClrs=['#1F3864','#2E75B6','#C0392B','#375623','#BF8F00','#7B3F9E','#1A7A4A','#D4580A','#888','#8B0000','#2980B9'];
   wrap.innerHTML=`
     <div class="sc-slbl">Andamento settimanale — 15-19 giugno 2026</div>
     <div style="font-size:11px;color:var(--dgrey);margin-bottom:10px">
@@ -1891,7 +1897,37 @@ function scBuildSettTable(){
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
+    </div>
+    <div class="sc-card sc-card-inner" style="overflow:hidden;margin-bottom:20px">
+      <div class="sc-slbl" style="margin-bottom:8px">Venduto settimana 15-19 giugno — per agente</div>
+      <div style="height:220px;position:relative"><canvas id="sc-sett-bar"></canvas></div>
+    </div>
+    <div class="sc-card sc-card-inner" style="overflow:hidden;margin-bottom:20px">
+      <div class="sc-slbl" style="margin-bottom:8px">Cumulato giugno — progressione settimanale</div>
+      <div style="height:250px;position:relative"><canvas id="sc-sett-line"></canvas></div>
     </div>`;
+  setTimeout(()=>{
+    const tk=v=>v>=1000?(Math.round(v/1000)+'k'):''+Math.round(v);
+    const fmt=v=>'€'+Math.round(v).toLocaleString('it-IT');
+    const barEl=document.getElementById('sc-sett-bar');
+    if(barEl){const ex=Chart.getChart(barEl);if(ex)ex.destroy();
+      new Chart(barEl,{type:'bar',
+        data:{labels:barAgs,datasets:[{label:'Venduto settimana',data:barVals,backgroundColor:barClrs,borderWidth:0}]},
+        options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt(c.raw)}}},
+          scales:{x:{ticks:{callback:tk},grid:{color:'rgba(0,0,0,.06)'}},y:{ticks:{font:{size:10}},grid:{display:false}}}}});}
+    const lineEl=document.getElementById('sc-sett-line');
+    if(lineEl){const ex=Chart.getChart(lineEl);if(ex)ex.destroy();
+      new Chart(lineEl,{type:'line',
+        data:{labels:settLabels,datasets:lineAgs.map((ag,i)=>({
+          label:ag,data:settD[ag]||[],
+          borderColor:lineClrs[i%lineClrs.length],backgroundColor:'transparent',
+          borderWidth:2,pointRadius:4,tension:0.3}))},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:12}},
+            tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmt(c.raw)}}},
+          scales:{y:{ticks:{callback:tk},grid:{color:'rgba(0,0,0,.06)'}},x:{grid:{display:false}}}}});}
+  },80);
 }
 
 // GRAFICI
