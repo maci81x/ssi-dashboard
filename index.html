@@ -432,6 +432,60 @@ tr.tot td{background:#e8f0fb;font-weight:700;color:var(--navy)}
 .hm-cell{padding:5px 8px;text-align:right;font-size:11px;font-weight:500;white-space:nowrap}
 .hm-legend{display:flex;gap:16px;font-size:11px;margin-bottom:10px;flex-wrap:wrap}
 .hm-swatch{width:14px;height:14px;border-radius:3px;flex-shrink:0;display:inline-block}
+
+/* ── SCHEDA COMMERCIALE ─────────────────────────────────────── */
+.sc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px}
+.sc-kpi{background:#fff;border-radius:8px;border:1.5px solid var(--border);padding:12px 16px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.sc-kpi-lbl{font-size:11px;color:var(--dgrey);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.sc-kpi-val{font-size:22px;font-weight:700;color:var(--text);line-height:1}
+.sc-kpi-sub{font-size:11px;color:var(--dgrey);margin-top:4px}
+.sc-dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex-shrink:0}
+.sc-dot-v{background:#375623}.sc-dot-g{background:#BF8F00}.sc-dot-r{background:#C0392B}.sc-dot-b{background:#1F3864}
+.sc-badge{display:inline-block;padding:2px 9px;border-radius:12px;font-size:11px;font-weight:600}
+.sc-bv{background:#E2EFDA;color:#375623}.sc-bg{background:#FFF2CC;color:#7A4E00}.sc-br{background:#FCE4EC;color:#C0392B}.sc-bb{background:#DEEAF1;color:#1F3864}
+.sc-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.sc-tab{padding:7px 16px;border:1.5px solid var(--border);border-radius:20px;font-size:12px;cursor:pointer;background:#fff;color:var(--dgrey);font-family:inherit;transition:all .15s}
+.sc-tab:hover{border-color:var(--navy);color:var(--navy)}
+.sc-tab.active{background:var(--navy);border-color:var(--navy);color:#fff;font-weight:600}
+.sc-pane{display:none}.sc-pane.active{display:block}
+.sc-card{background:#fff;border-radius:8px;border:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,.05);margin-bottom:14px}
+.sc-card-inner{padding:14px 18px}
+.sc-card-title{font-size:12px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.04em;margin-bottom:12px}
+.sc-table{width:100%;border-collapse:collapse;font-size:12px}
+.sc-table th{background:var(--navy);color:#fff;padding:8px 10px;text-align:left;font-size:11px;font-weight:600}
+.sc-table td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.sc-table tr:last-child td{border-bottom:none}
+.sc-table tr:hover td{background:#f8f9ff}
+.sc-table .num{text-align:right;font-variant-numeric:tabular-nums}
+.sc-area{background:var(--lblue)!important;font-weight:700;color:var(--navy);font-size:11px}
+.sc-prog-wrap{height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:4px}
+.sc-prog-fill{height:100%;border-radius:3px}
+.sc-pv{background:#375623}.sc-pg{background:#BF8F00}.sc-pr{background:#C0392B}
+.sc-prog-lbl{font-size:10px;color:var(--dgrey);margin-top:2px}
+.sc-two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:680px){.sc-two{grid-template-columns:1fr}}
+.sc-freq{display:flex;gap:9px;padding:6px 0;border-bottom:1px solid var(--border);align-items:flex-start;font-size:12px}
+.sc-freq:last-child{border-bottom:none}
+.sc-freq-ico{font-size:15px;flex-shrink:0;margin-top:1px}
+.sc-freq-sub{font-size:11px;color:var(--dgrey);margin-top:2px}
+.sc-note{background:#FFF2CC;border-left:4px solid #BF8F00;border-radius:0 8px 8px 0;padding:10px 14px;font-size:12px;color:#7A4E00;margin-top:10px}
+.sc-slbl{font-size:11px;font-weight:700;color:var(--dgrey);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px}
+.sc-sog th{background:#E2EFDA;color:#375623;padding:7px 10px;font-size:11px;font-weight:700}
+.sc-sog .sc-th-g{background:#FFF2CC;color:#7A4E00}
+.sc-sog .sc-th-r{background:#FCE4EC;color:#C0392B}
+.sc-chart-wrap{position:relative;height:240px;padding:0 4px}
+.sc-chart-wrap-full{position:relative;height:260px;padding:0 4px}
+.sc-charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:680px){.sc-charts-grid{grid-template-columns:1fr}}
+.sc-dec-item{display:flex;gap:11px;padding:9px 0;border-bottom:1px solid var(--border);align-items:flex-start}
+.sc-dec-item:last-child{border-bottom:none}
+.sc-dec-num{width:25px;height:25px;border-radius:50%;background:var(--grey);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--dgrey);flex-shrink:0}
+.sc-dec-open{background:#FFF2CC;color:#7A4E00}
+.sc-dec-meta{font-size:11px;color:var(--dgrey);margin-top:3px}
+.sc-inp{background:#FFF2CC;border:1px dashed #BF8F00;border-radius:4px;padding:2px 6px;font-size:12px;font-family:inherit;min-width:70px}
+.sc-inp-l{text-align:left;min-width:180px}
+.sc-inp:focus{outline:2px solid var(--blue);background:#fff}
+
 </style>
 </head>
 <body id="artifacts-component-root-html">
@@ -441,6 +495,7 @@ tr.tot td{background:#e8f0fb;font-weight:700;color:var(--navy)}
     <div class="sub" id="ts">Dati aggiornati al: 11 giugno 2026</div>
   </div>
   <div style="display:flex;gap:8px">
+    <a href="input.html" style="font-size:12px;padding:6px 14px;background:rgba(255,255,255,.15);color:#fff;border-radius:5px;text-decoration:none;border:1px solid rgba(255,255,255,.3);margin-right:6px">✏️ Inserisci dati</a>
     <a id="dl-html" download="SSI_dashboard.html" style="font-size:12px;padding:6px 14px;background:rgba(255,255,255,.15);color:#fff;border-radius:5px;text-decoration:none;border:1px solid rgba(255,255,255,.3)">⬇ Scarica HTML</a>
   </div>
 </div>
@@ -456,6 +511,7 @@ tr.tot td{background:#e8f0fb;font-weight:700;color:var(--navy)}
   <div class="tab" onclick="showPage('multiagente')">Multi-Agente</div>
   <div class="tab" onclick="showPage('analisi')">Analisi avanzata</div>
   <div class="tab" onclick="showPage('heatmap')">Heatmap</div>
+  <div class="tab" onclick="showPage('scheda')">⭐ Scheda Commerciale</div>
 </div>
 
 <!-- PANORAMICA -->
@@ -1322,6 +1378,528 @@ function showPage(id){
   else if(id==='analisi')renderAnalisi()
   else if(id==='heatmap')renderHeatmap()
 }
+
+
+
+// ══════════════════════════════════════════════════════════════
+// SCHEDA COMMERCIALE v3 — dati storici + localStorage
+// ══════════════════════════════════════════════════════════════
+
+const SC_V26 = {
+  'Roberto Macinai':    [22427.13,23647.21,61840.98,9296.56,53210.08,8490],
+  'Massimo Necci':      [38698.5,41007,37373,44656.5,43066,9809],
+  'Giovanna Panti':     [19766.5,51092,37817,16269,7295,3574],
+  'Marco Macinai':      [23693.69,34595.8,25730,11455,11708,11361.5],
+  'Mattia Guardiani':   [1960,2290,5415,1260,2122.5,0],
+  'Davide Gaziano':     [10516.87,7640,11073,22842.47,19054.21,0],
+  'Francesco Pelliccia':[0,1285,0,800,1002,0],
+  'Alberto Mancini':    [2300,2030,5710,2335,6422.65,0],
+  'Alessandro Raia':    [0,3290,20605,10470,1595,0],
+  'Mario Rufolo':       [0,0,0,0,13770,0],
+  'Gigliola Gorini':    [0,0,0,0,0,0],
+};
+const SC_I26 = {
+  'Roberto Macinai':    [27302.91,36254.6,29558.81,24587.53,29230.67,3555.4],
+  'Massimo Necci':      [35693.91,27934.84,24134.83,32834.17,61270.14,15863.35],
+  'Giovanna Panti':     [45718.08,34567.15,27931.23,44167.14,26935.97,6308.95],
+  'Marco Macinai':      [27474.33,35007.37,23954.19,33253.34,38110.94,2854.8],
+  'Mattia Guardiani':   [2139.09,0,2173.08,658.8,3927.01,0],
+  'Davide Gaziano':     [9003.37,3524.8,4312.92,11204.46,10642.72,2492.69],
+  'Francesco Pelliccia':[183,0,1760,1546.47,9202.8,2854.8],
+  'Alberto Mancini':    [2139.09,0,2173.08,658.8,3927.01,0],
+  'Alessandro Raia':    [0,0,0,0,6304.8,305],
+  'Mario Rufolo':       [0,0,0,0,9684.4,312.32],
+  'Gigliola Gorini':    [0,0,0,0,0,0],
+};
+const SC_T26 = {
+  'Roberto Macinai':    [12285,9338,13236,4230,9935,10311],
+  'Massimo Necci':      [8390,5986.5,11195.5,7696,10085.5,5184],
+  'Giovanna Panti':     [13464,15634,10281,9408,9765,10520],
+  'Marco Macinai':      [8331,3595.33,5965,4313,7719.33,7075],
+  'Mattia Guardiani':   [0,0,0,0,0,960],
+  'Davide Gaziano':     [0,0,0,0,795,0],
+  'Francesco Pelliccia':[0,0,0,0,0,0],
+  'Alberto Mancini':    [0,0,0,0,0,0],
+  'Alessandro Raia':    [0,0,0,0,0,0],
+  'Mario Rufolo':       [0,0,0,0,0,0],
+  'Gigliola Gorini':    [0,0,0,0,0,0],
+};
+const SC_V25 = {
+  'Roberto Macinai':    [14727,45979,81223.5,38027.5,52780.18,15917,72393.51,14780.16,13367.5,32812,53387.3,25014.02],
+  'Massimo Necci':      [71395.2,19656,23409,16138,23249,26379,30416,24721.5,27380,28490.45,40108,28033],
+  'Giovanna Panti':     [15434,35331,28854.67,9082,14213,20529.5,11054,16925,11537,32608,24943,33254],
+  'Marco Macinai':      [12172.48,45731,21136,10241,29265,16027,39425,9545,38133,25900,27570,15819],
+  'Mattia Guardiani':   [0,2170,4705,700,1810,4755,930,3925,3770,3920,2680,450],
+};
+
+const SC_AGENTS_DEF = [
+  ['alessandro_raia','Alessandro Raia','FI'],
+  ['mario_rufolo','Mario Rufolo','FI'],
+  ['alberto_mancini','Alberto Mancini','FI'],
+  ['davide_gaziano','Davide Gaziano','SI'],
+  ['massimo_necci','Massimo Necci','SI'],
+  ['gigliola_gorini','Gigliola Gorini','SI'],
+  ['mattia_guardiani','Mattia Guardiani','SI'],
+  ['francesco_pelliccia','Francesco Pelliccia','SI'],
+  ['marco_macinai','Marco Macinai','DIR'],
+  ['giovanna_panti','Giovanna Panti','DIR'],
+  ['roberto_macinai','Roberto Macinai','DIR'],
+];
+const SC_AGENTS = SC_AGENTS_DEF.map(([k,n])=>n);
+const SC_COLORS = ['#1F3864','#2E75B6','#C0392B','#375623','#BF8F00','#7B3F9E',
+                   '#E67E22','#16A085','#8E44AD','#2C3E50','#795548'];
+const SC_V25_MESI = [0,1,2,3,4,5].map(i=>Object.values(SC_V25).reduce((s,v)=>s+(v[i]||0),0));
+const SC_V26_MESI = [0,1,2,3,4,5].map(i=>Object.values(SC_V26).reduce((s,v)=>s+(v[i]||0),0));
+const MESI_LABELS = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+
+// localStorage helpers
+function lsKey(anno,mese){return `ssi_dati_${anno}_${String(mese).padStart(2,'0')}`;}
+function tgtKey(agKey){return `ssi_target_${agKey}`;}
+function agKeyOf(agName){
+  return agName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'_');
+}
+function readMonthData(anno,mese){const r=localStorage.getItem(lsKey(anno,mese));return r?JSON.parse(r):{};}
+function readTarget(agKey){const r=localStorage.getItem(tgtKey(agKey));return r?JSON.parse(r):{};}
+function latestStoredMonth(){
+  let best=null;
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(!k||!k.startsWith('ssi_dati_20'))continue;
+    const m=k.match(/ssi_dati_(\d+)_(\d+)/);
+    if(!m)continue;
+    const [,y,mo]=[...m];
+    if(!best||+y>+best[0]||(+y===+best[0]&&+mo>+best[1]))best=[+y,+mo];
+  }
+  return best;
+}
+
+// UI helpers
+function scSum(obj,ag){return (obj[ag]||[]).reduce((s,v)=>s+(v||0),0);}
+function scFmt(n){if(!n||n===0)return'—';return'€'+Math.round(n).toLocaleString('it-IT');}
+function scPct(n){return Math.round(n)+'%';}
+
+// Sub-tab switch
+function scTab(id){
+  const ids=['ranking','crescita','grafici','monitor','soglie','decisioni'];
+  document.querySelectorAll('.sc-tab').forEach((t,i)=>t.classList.toggle('active',ids[i]===id));
+  document.querySelectorAll('.sc-pane').forEach(p=>p.classList.toggle('active',p.id==='scp-'+id));
+  if(id==='grafici')scBuildCharts();
+  if(id==='crescita')scBuildCrescita();
+}
+
+// INIT
+function scInit(){
+  const lu=localStorage.getItem('ssi_last_update');
+  const luEl=document.getElementById('sc-last-update');
+  if(lu&&luEl)luEl.textContent='Ultimo aggiornamento inserito: '+lu;
+  const latest=latestStoredMonth();
+  const umEl=document.getElementById('sc-ultimo-mese');
+  if(umEl)umEl.textContent=latest?MESI_LABELS[latest[1]-1]+' '+latest[0]:'— nessuno inserito';
+  let totTac=0;SC_AGENTS.forEach(ag=>{totTac+=scSum(SC_T26,ag);});
+  const tEl=document.getElementById('sc-taciti-ytd');if(tEl)tEl.textContent=scFmt(totTac);
+  if(latest){
+    const data=readMonthData(latest[0],latest[1]);
+    let totN=0;SC_AGENTS_DEF.forEach(([k])=>{totN+=(data[k]?.nuovi||0);});
+    const nEl=document.getElementById('sc-nuovi-tot');if(nEl)nEl.textContent=totN>0?totN:'—';
+  }
+  scRenderRanking();
+}
+
+// RANKING
+function scRenderRanking(){
+  const tbody=document.getElementById('sc-ranking-tbody');if(!tbody)return;
+  const latest=latestStoredMonth();
+  const curData=latest?readMonthData(latest[0],latest[1]):{};
+  const areas=[
+    {label:'AREA FIORENTINA — Capo Area: Alessandro Raia',agents:['Alessandro Raia','Mario Rufolo','Alberto Mancini']},
+    {label:'AREA SENESE — Capo Area: Massimo Necci',agents:['Davide Gaziano','Massimo Necci','Gigliola Gorini','Mattia Guardiani','Francesco Pelliccia']},
+    {label:'DIREZIONE',agents:['Marco Macinai','Giovanna Panti','Roberto Macinai']},
+  ];
+  let html='';
+  areas.forEach(area=>{
+    html+=`<tr><td colspan="9" class="sc-area" style="padding:5px 10px">${area.label}</td></tr>`;
+    [...area.agents].filter(ag=>SC_V26[ag]!==undefined)
+      .sort((a,b)=>scSum(SC_V26,b)-scSum(SC_V26,a))
+      .forEach(ag=>{
+        const agKey=agKeyOf(ag);
+        const v=scSum(SC_V26,ag),i=scSum(SC_I26,ag),t=scSum(SC_T26,ag);
+        const cr=v>0?(i/v*100):0;
+        const nuovi=(curData[agKey]||{}).nuovi||0;
+        const tgt=readTarget(agKey);const tv=tgt.venduto||0;
+        const pv=tv>0?Math.round(v/tv*100):null;
+        const fillCls=cr>=50?'sc-pv':cr>=40?'sc-pg':'sc-pr';
+        const sem=cr>=50?'<span class="sc-badge sc-bv">✅ OK</span>':
+                  cr>=40?'<span class="sc-badge sc-bg">⚠️ Attenzione</span>':
+                         '<span class="sc-badge sc-br">🔴 Azione</span>';
+        const pvTxt=pv!==null?pv+'%':'—';
+        const pvStyle=pv===null?'':pv>=90?'style="color:#375623;font-weight:700"':pv>=75?'style="color:#BF8F00"':'style="color:#C0392B"';
+        html+=`<tr>
+          <td><strong>${ag}</strong></td>
+          <td class="num">${scFmt(v)}</td><td class="num">${scFmt(i)}</td>
+          <td class="num">${scPct(cr)}</td>
+          <td><div class="sc-prog-wrap"><div class="sc-prog-fill ${fillCls}" style="width:${Math.min(cr,100)}%"></div></div>
+            <div class="sc-prog-lbl">${scPct(cr)} incassato/venduto</div></td>
+          <td class="num">${scFmt(t)}</td><td class="num">${nuovi||'—'}</td>
+          <td class="num" ${pvStyle}>${pvTxt}</td><td>${sem}</td>
+        </tr>`;
+      });
+  });
+  tbody.innerHTML=html;
+}
+
+// CRESCITA AGENTI
+function scBuildCrescita(){
+  const container=document.getElementById('sc-crescita-container');if(!container)return;
+  const latest=latestStoredMonth();
+  const curData=latest?readMonthData(latest[0],latest[1]):{};
+  const prevMese=latest?(latest[1]===1?12:latest[1]-1):null;
+  const prevAnno=latest?(latest[1]===1?latest[0]-1:latest[0]):null;
+  const prevData=prevMese?readMonthData(prevAnno,prevMese):{};
+  const meseName=latest?MESI_LABELS[latest[1]-1]:'—';
+  const prevName=prevMese?MESI_LABELS[prevMese-1]:'—';
+  const totVYTD=Object.values(SC_V26).reduce((s,v)=>s+v.reduce((a,b)=>a+(b||0),0),0);
+  const areaGroups=[
+    {area:'FI',label:'Area Fiorentina',agents:['Alessandro Raia','Mario Rufolo','Alberto Mancini']},
+    {area:'SI',label:'Area Senese',agents:['Davide Gaziano','Massimo Necci','Gigliola Gorini','Mattia Guardiani','Francesco Pelliccia']},
+    {area:'DIR',label:'Direzione',agents:['Marco Macinai','Giovanna Panti','Roberto Macinai']},
+  ];
+  let html='';
+  areaGroups.forEach(({area,label,agents})=>{
+    html+=`<div style="margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;color:#fff;background:var(--navy);
+        padding:4px 14px;border-radius:8px 8px 0 0;display:inline-block;
+        text-transform:uppercase;letter-spacing:.05em">${label}</div>
+      <div style="background:#fff;border:1px solid var(--border);border-radius:0 8px 8px 8px;overflow:hidden">`;
+    agents.filter(ag=>SC_V26[ag]!==undefined).forEach((ag,idx)=>{
+      if(idx>0)html+='<hr style="border:none;border-top:1px solid var(--border)">';
+      const agKey=agKeyOf(ag);
+      const vYTD=scSum(SC_V26,ag),iYTD=scSum(SC_I26,ag);
+      const cr=vYTD>0?Math.round(iYTD/vYTD*100):null;
+      const curAg=curData[agKey]||{};const prevAg=prevData[agKey]||{};
+      const vCur=curAg.venduto||0,iCur=curAg.incassato||0,vPrev=prevAg.venduto||0;
+      const nuovi=curAg.nuovi||0;
+      const tgt=readTarget(agKey);const tv=tgt.venduto||0,tn=tgt.nuovi||0;
+      const mom=vPrev>0?Math.round((vCur-vPrev)/vPrev*100):null;
+      const v25m=latest?(SC_V25[ag]||[])[latest[1]-1]||0:0;
+      const yoy=v25m>0?Math.round((vCur-v25m)/v25m*100):null;
+      const pvM=tv>0&&vCur>0?Math.round(vCur/tv*100):null;
+      const crM=vCur>0?Math.round(iCur/vCur*100):null;
+      const contribPct=totVYTD>0?Math.round(vYTD/totVYTD*100):0;
+      const isCollo=vYTD<8000;
+      // Colori
+      const momC=mom===null?'#999':mom>=5?'#375623':mom>=-5?'#BF8F00':'#C0392B';
+      const yoyC=yoy===null?'#999':yoy>=40?'#375623':yoy>=20?'#BF8F00':'#C0392B';
+      const pvC=pvM===null?'#999':pvM>=90?'#375623':pvM>=75?'#BF8F00':'#C0392B';
+      const crC=crM===null?'#999':crM>=50?'#375623':crM>=40?'#BF8F00':'#C0392B';
+      const nuoviC=tn>0?(nuovi>=tn?'#375623':nuovi>0?'#BF8F00':'#C0392B'):'#1a1a2e';
+      // Mini report
+      const nome=ag.split(' ').slice(-1)[0];
+      let rp=[];
+      if(pvM!==null)rp.push(pvM>=90?`✅ ${pvM}% del target`:pvM>=75?`⚠️ ${pvM}% del target`:`🔴 ${pvM}% del target`);
+      else if(vCur>0)rp.push(`venduto ${scFmt(vCur)}`);
+      else rp.push('🔴 nessun dato inserito');
+      if(crM!==null)rp.push(`CR ${crM}%${crM>=50?' ✅':crM>=40?' ⚠️ (soglia bonus)':' 🔴'}`);
+      if(mom!==null&&Math.abs(mom)>=5)rp.push(`${mom>0?'+':''}${mom}% MoM`);
+      if(yoy!==null)rp.push(`YoY ${yoy>0?'+':''}${yoy}%${yoy>=40?' ✅':yoy>=20?' ⚠️':' 🔴'}`);
+      if(nuovi>0)rp.push(`${nuovi} nuov${nuovi===1?'o':'i'} client${nuovi===1?'e':'i'}`);
+      html+=`<div style="padding:12px 16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+          <div>
+            <span style="font-size:14px;font-weight:700;color:var(--navy)">${ag}</span>
+            <span style="font-size:11px;color:var(--dgrey);margin-left:8px">${contribPct}% del venduto aziendale YTD</span>
+            ${isCollo&&vYTD>0?'<span style="background:#FCE4EC;color:#C0392B;font-size:10px;padding:2px 8px;border-radius:10px;margin-left:6px;font-weight:600">⚠ basso contributo</span>':''}
+          </div>
+          <span style="font-size:11px;color:var(--dgrey)">Mese: ${latest?meseName+' '+latest[0]:'—'}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:10px">
+          ${[
+            ['Venduto YTD', scFmt(vYTD), '#1F3864'],
+            ['MoM ('+prevName+'→'+meseName+')', mom!==null?(mom>0?'+':'')+mom+'%':'—', momC],
+            ['YoY '+meseName, yoy!==null?(yoy>0?'+':'')+yoy+'%':'—', yoyC],
+            ['CR% mese', crM!==null?crM+'%':'—', crC],
+            ['Nuovi clienti', nuovi>0?nuovi+(tn>0?' / '+tn:''):'—', nuoviC],
+            ['% Target mese', pvM!==null?pvM+'%':'—', pvC],
+          ].map(([lbl,val,color])=>`
+            <div style="background:var(--grey);border-radius:6px;padding:8px 10px;text-align:center">
+              <div style="font-size:10px;color:var(--dgrey);font-weight:600;text-transform:uppercase;line-height:1.2">${lbl}</div>
+              <div style="font-size:16px;font-weight:700;margin-top:4px;color:${color}">${val}</div>
+            </div>`).join('')}
+        </div>
+        <div style="background:#FFF2CC;border-left:4px solid #BF8F00;border-radius:0 6px 6px 0;
+          padding:8px 12px;font-size:12px;color:#5a3e00;line-height:1.5">
+          <strong>${nome}:</strong> ${rp.join(' · ')}
+        </div>
+      </div>`;
+    });
+    html+='</div></div>';
+  });
+  container.innerHTML=html;
+}
+
+// GRAFICI
+let scChartsBuilt=false;
+function scBuildCharts(){
+  if(scChartsBuilt)return;scChartsBuilt=true;
+  Chart.defaults.font.family="'Segoe UI',Arial,sans-serif";Chart.defaults.font.size=11;Chart.defaults.color='#555';
+  const fmt=v=>Math.round(v).toLocaleString('it-IT');
+  const tk=v=>v>=1000?(Math.round(v/1000)+'k'):''+Math.round(v);
+  const agColors=SC_AGENTS.map((_,i)=>SC_COLORS[i%SC_COLORS.length]);
+  const vTots=SC_AGENTS.map(ag=>Math.round(scSum(SC_V26,ag)));
+  const sorted=[...SC_AGENTS.map((ag,i)=>({ag,v:vTots[i],c:agColors[i]}))].sort((a,b)=>b.v-a.v);
+  new Chart(document.getElementById('sc-chart-vtd'),{type:'bar',
+    data:{labels:sorted.map(x=>x.ag),datasets:[{label:'Venduto YTD',data:sorted.map(x=>x.v),backgroundColor:sorted.map(x=>x.c),borderWidth:0}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'€'+fmt(c.raw)}}},
+      scales:{x:{ticks:{callback:tk},grid:{color:'rgba(0,0,0,.06)'}},y:{ticks:{font:{size:10}}}}}});
+  const crVals=SC_AGENTS.map(ag=>{const v=scSum(SC_V26,ag),i=scSum(SC_I26,ag);return v>0?Math.round(i/v*100):0;});
+  new Chart(document.getElementById('sc-chart-cr'),{type:'bar',
+    data:{labels:SC_AGENTS,datasets:[
+      {label:'CR%',data:crVals,backgroundColor:crVals.map(v=>v>=50?'#375623':v>=40?'#BF8F00':'#C0392B'),borderWidth:0},
+      {label:'Soglia 40%',data:SC_AGENTS.map(()=>40),type:'line',borderColor:'#C0392B',borderWidth:1.5,borderDash:[4,3],pointRadius:0,fill:false}
+    ]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.raw+'%'}}},
+      scales:{x:{min:0,max:Math.max(160,...crVals)+10,ticks:{callback:v=>v+'%'},grid:{color:'rgba(0,0,0,.06)'}},y:{ticks:{font:{size:10}}}}}});
+  new Chart(document.getElementById('sc-chart-mese'),{type:'bar',
+    data:{labels:['Gen','Feb','Mar','Apr','Mag','Giu'],datasets:[
+      {label:'2025',data:SC_V25_MESI,backgroundColor:'rgba(55,86,35,.25)',borderColor:'#375623',borderWidth:1.5},
+      {label:'2026',data:SC_V26_MESI,backgroundColor:'rgba(31,56,100,.8)',borderColor:'#1F3864',borderWidth:0}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:c=>'€'+fmt(c.raw)}}},
+      scales:{y:{ticks:{callback:tk},grid:{color:'rgba(0,0,0,.06)'}}} }});
+  const gV=SC_AGENTS.map(ag=>Math.round(scSum(SC_V26,ag)));
+  const gI=SC_AGENTS.map(ag=>Math.round(scSum(SC_I26,ag)));
+  new Chart(document.getElementById('sc-chart-gap'),{type:'bar',
+    data:{labels:SC_AGENTS,datasets:[
+      {label:'Venduto YTD',data:gV,backgroundColor:'rgba(31,56,100,.7)',borderWidth:0},
+      {label:'Incassato YTD',data:gI,backgroundColor:'rgba(55,86,35,.7)',borderWidth:0}
+    ]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:10}}},tooltip:{callbacks:{label:c=>'€'+fmt(c.raw)}}},
+      scales:{x:{ticks:{callback:tk},grid:{color:'rgba(0,0,0,.06)'}},y:{ticks:{font:{size:10}}}}}});
+  new Chart(document.getElementById('sc-chart-tac'),{type:'bar',
+    data:{labels:SC_AGENTS,datasets:[{label:'Taciti rinnovi YTD',data:SC_AGENTS.map(ag=>Math.round(scSum(SC_T26,ag))),backgroundColor:'#7B3F9E',borderWidth:0}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'€'+fmt(c.raw)}}},
+      scales:{x:{ticks:{callback:tk},grid:{color:'rgba(0,0,0,.06)'}},y:{ticks:{font:{size:10}}}}}});
+  const latest=latestStoredMonth();
+  const nuoviData=SC_AGENTS_DEF.map(([k,ag])=>{
+    if(!latest)return 0;
+    const d=readMonthData(latest[0],latest[1]);
+    return (d[k]?.nuovi)||0;
+  });
+  new Chart(document.getElementById('sc-chart-nuovi'),{type:'bar',
+    data:{labels:SC_AGENTS,datasets:[{label:'Nuovi clienti',data:nuoviData,
+      backgroundColor:nuoviData.map(v=>v>0?'#375623':'#E0E4EF'),borderWidth:0}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw+' client'+(c.raw===1?'e':'i')}}},
+      scales:{x:{ticks:{stepSize:1},grid:{color:'rgba(0,0,0,.06)'}},y:{ticks:{font:{size:10}}}}}});
+}
+
+// Override showPage
+const origShowPage2=window.showPage;
+window.showPage=function(id){
+  origShowPage2(id);
+  if(id==='scheda')scInit();
+};
+
+
+
 </script>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     TAB: SCHEDA COMMERCIALE v3
+     dati storici + localStorage da input.html
+════════════════════════════════════════════════════════════════ -->
+<div id="scheda" class="page">
+
+<div style="background:#FFF2CC;border:1px solid #BF8F00;border-radius:8px;
+  padding:10px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+  <span style="font-size:18px">✏️</span>
+  <div style="font-size:12px;color:#5a3e00">
+    <strong>Per inserire i dati del mese corrente</strong> apri
+    <a href="input.html" style="color:#1F3864;font-weight:700">input.html</a> nella stessa cartella.
+    I dati si aggiornano automaticamente qui appena salvati.<br>
+    <span id="sc-last-update" style="font-size:11px;color:#888"></span>
+  </div>
+  <a href="input.html" style="margin-left:auto;background:#BF8F00;color:#fff;
+    padding:7px 16px;border-radius:6px;text-decoration:none;font-size:12px;font-weight:600;white-space:nowrap">
+    Apri inserimento →</a>
+</div>
+
+<div class="sc-slbl">KPI aziendali — 2026 Gen–Giu (storico) + mesi nuovi da input</div>
+<div class="sc-grid">
+  <div class="sc-kpi"><div class="sc-kpi-lbl"><span class="sc-dot sc-dot-b"></span>Venduto YTD 2026</div>
+    <div class="sc-kpi-val">€803.668</div><div class="sc-kpi-sub">Gen–Giu storico + nuovi mesi</div></div>
+  <div class="sc-kpi"><div class="sc-kpi-lbl"><span class="sc-dot sc-dot-g"></span>Incassato YTD 2026</div>
+    <div class="sc-kpi-val">€756.727</div><div class="sc-kpi-sub">CR% 94.2% — dati storici</div></div>
+  <div class="sc-kpi"><div class="sc-kpi-lbl"><span class="sc-dot sc-dot-v"></span>Mese più recente</div>
+    <div class="sc-kpi-val" id="sc-ultimo-mese">—</div><div class="sc-kpi-sub">da input.html</div></div>
+  <div class="sc-kpi"><div class="sc-kpi-lbl"><span class="sc-dot sc-dot-b"></span>Taciti rinnovi YTD</div>
+    <div class="sc-kpi-val" id="sc-taciti-ytd">—</div><div class="sc-kpi-sub">Revenue garantita base</div></div>
+  <div class="sc-kpi"><div class="sc-kpi-lbl"><span class="sc-dot sc-dot-v"></span>Top performer YTD</div>
+    <div class="sc-kpi-val" style="font-size:16px">Massimo Necci</div>
+    <div class="sc-kpi-sub">€214.610 · CR 92.1%</div></div>
+  <div class="sc-kpi"><div class="sc-kpi-lbl"><span class="sc-dot sc-dot-g"></span>Nuovi clienti (mese)</div>
+    <div class="sc-kpi-val" id="sc-nuovi-tot">—</div><div class="sc-kpi-sub">dal mese corrente in input</div></div>
+</div>
+
+<div class="sc-tabs">
+  <button class="sc-tab active" onclick="scTab('ranking')">🏆 Ranking agenti</button>
+  <button class="sc-tab" onclick="scTab('crescita')">📈 Crescita agenti</button>
+  <button class="sc-tab" onclick="scTab('grafici')">📊 Grafici KPI</button>
+  <button class="sc-tab" onclick="scTab('monitor')">🕐 Monitoraggio</button>
+  <button class="sc-tab" onclick="scTab('soglie')">🚦 Soglie</button>
+  <button class="sc-tab" onclick="scTab('decisioni')">✅ Decisioni</button>
+</div>
+
+<!-- RANKING -->
+<div class="sc-pane active" id="scp-ranking">
+  <div class="sc-slbl">Performance 2026 YTD — tutti gli agenti</div>
+  <div class="sc-card" style="overflow:hidden"><table class="sc-table">
+    <thead><tr>
+      <th style="width:17%">Agente</th><th class="num">Venduto YTD</th><th class="num">Incassato YTD</th>
+      <th class="num">CR%</th><th style="width:18%">CR% barra</th><th class="num">Taciti YTD</th>
+      <th class="num">Nuovi cli.</th><th class="num">% Target V</th><th style="width:10%">Stato</th>
+    </tr></thead>
+    <tbody id="sc-ranking-tbody"></tbody>
+  </table></div>
+  <div class="sc-slbl">KPI da presentare ogni mercoledì</div>
+  <div class="sc-card" style="overflow:hidden"><table class="sc-table">
+    <thead><tr><th style="width:22%">Dato</th><th style="width:30%">Cosa presentare</th>
+      <th style="width:20%">Soglia</th><th>Output richiesto</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Venduto settimana</strong></td><td>€ 7gg · delta vs quota</td><td><span class="sc-badge sc-bv">Verde ≥90%</span></td><td>Top + bottom performer</td></tr>
+      <tr><td><strong>CR% mese</strong><div style="font-size:11px;color:var(--dgrey)">soglia bonus</div></td><td>Incassato/venduto per agente</td><td><span class="sc-badge sc-br">Rosso &lt;40%</span></td><td>Agente con DSO alto</td></tr>
+      <tr><td><strong>Nuovi clienti mese</strong></td><td>N° per agente vs target</td><td><span class="sc-badge sc-bg">Giallo se 0</span></td><td>Chi non porta nuovi clienti</td></tr>
+      <tr><td><strong>MoM venduto</strong></td><td>Delta vs mese precedente</td><td><span class="sc-badge sc-bg">Giallo se &lt;0%</span></td><td>Chi è in calo — perché</td></tr>
+      <tr><td><strong>Taciti rinnovi</strong></td><td>€ attesi · confermati · a rischio</td><td><span class="sc-badge sc-br">Rosso &lt;80%</span></td><td>Clienti a rischio churn</td></tr>
+      <tr><td><strong>YoY mese</strong></td><td>Vs stesso mese 2025 per agente</td><td><span class="sc-badge sc-br">Rosso &lt;+20%</span></td><td>Gap vs piano +40%</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<!-- CRESCITA -->
+<div class="sc-pane" id="scp-crescita">
+  <div class="sc-slbl">Crescita per agente — MoM, YoY, nuovi clienti, contributo aziendale</div>
+  <div class="sc-note" style="margin-bottom:12px">
+    YoY confronta il mese inserito in input vs stesso mese 2025 (storico dashboard).
+    MoM confronta mese corrente vs mese precedente. Inserisci prima i dati in <a href="input.html">input.html</a>.
+  </div>
+  <div id="sc-crescita-container"></div>
+</div>
+
+<!-- GRAFICI -->
+<div class="sc-pane" id="scp-grafici">
+  <div class="sc-charts-grid">
+    <div class="sc-card sc-card-inner"><div class="sc-card-title">Venduto YTD per agente — 2026</div>
+      <div class="sc-chart-wrap"><canvas id="sc-chart-vtd"></canvas></div></div>
+    <div class="sc-card sc-card-inner"><div class="sc-card-title">CR% per agente — soglia bonus 40%</div>
+      <div class="sc-chart-wrap"><canvas id="sc-chart-cr"></canvas></div></div>
+  </div>
+  <div class="sc-card sc-card-inner" style="margin-bottom:14px">
+    <div class="sc-card-title">Venduto mensile 2026 vs 2025</div>
+    <div class="sc-chart-wrap-full"><canvas id="sc-chart-mese"></canvas></div>
+  </div>
+  <div class="sc-charts-grid">
+    <div class="sc-card sc-card-inner"><div class="sc-card-title">Gap Venduto / Incassato YTD per agente</div>
+      <div class="sc-chart-wrap"><canvas id="sc-chart-gap"></canvas></div></div>
+    <div class="sc-card sc-card-inner"><div class="sc-card-title">Taciti rinnovi YTD per agente</div>
+      <div class="sc-chart-wrap"><canvas id="sc-chart-tac"></canvas></div></div>
+  </div>
+  <div class="sc-card sc-card-inner" style="margin-bottom:14px">
+    <div class="sc-card-title">Nuovi clienti per agente — mese corrente da input.html</div>
+    <div class="sc-chart-wrap"><canvas id="sc-chart-nuovi"></canvas></div>
+  </div>
+</div>
+
+<!-- MONITORAGGIO -->
+<div class="sc-pane" id="scp-monitor">
+  <div class="sc-two">
+    <div>
+      <div class="sc-slbl">Giornaliero — DV</div>
+      <div class="sc-card sc-card-inner">
+        <div class="sc-freq"><div class="sc-freq-ico">📈</div><div><div>Venduto del giorno per agente</div><div class="sc-freq-sub">Export Securmars</div></div></div>
+        <div class="sc-freq"><div class="sc-freq-ico">📞</div><div><div>Appuntamenti fissati e svolti</div><div class="sc-freq-sub">Agenda agente</div></div></div>
+        <div class="sc-freq"><div class="sc-freq-ico">⚠️</div><div><div>Lead non lavorati &gt;48h</div><div class="sc-freq-sub">Alert se senza contatto</div></div></div>
+        <div class="sc-freq"><div class="sc-freq-ico">💰</div><div><div>Incassi del giorno (banca)</div><div class="sc-freq-sub">Con AMM / Francesco</div></div></div>
+        <div class="sc-freq"><div class="sc-freq-ico">🔄</div><div><div>Taciti rinnovi entro 7gg</div><div class="sc-freq-sub">Alert scadenziario</div></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="sc-slbl">Settimanale — preparazione mercoledì</div>
+      <div class="sc-card sc-card-inner">
+        <div class="sc-freq"><div class="sc-freq-ico">📊</div><div><div>Venduto · incassato · CR% MTD + YTD</div><div class="sc-freq-sub">Da Securmars + banca</div></div></div>
+        <div class="sc-freq"><div class="sc-freq-ico">🏆</div><div><div>Classifica agenti top e bottom</div><div class="sc-freq-sub">% quota + trend 4 settimane</div></div></div>
+        <div class="sc-freq"><div class="sc-freq-ico">🆕</div><div><div>Nuovi clienti mese — per agente</div><div class="sc-freq-sub">Da input.html</div></div></div>
+        <div class="sc-freq"><div class="sc-freq-ico">📈</div><div><div>MoM venduto — chi cresce, chi cala</div><div class="sc-freq-sub">Delta vs mese precedente</div></div></div>
+        <div class="sc-freq"><div class="sc-freq-ico">🔀</div><div><div>Pipeline: Lead→Appt→Prev→Contratto</div><div class="sc-freq-sub">Win rate per agente</div></div></div>
+        <div class="sc-freq"><div class="sc-freq-ico">📅</div><div><div>Rinnovi confermati / a rischio</div><div class="sc-freq-sub">Scadenze 30/60/90gg</div></div></div>
+        <div class="sc-freq"><div class="sc-freq-ico">⭐</div><div><div>CR% mese — soglia 40% bonus</div><div class="sc-freq-sub">Attivo solo se CR ≥ 40%</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SOGLIE -->
+<div class="sc-pane" id="scp-soglie">
+  <div class="sc-slbl">Soglie semaforo</div>
+  <div class="sc-card" style="overflow:hidden"><table class="sc-table sc-sog">
+    <thead><tr><th style="width:38%">KPI</th>
+      <th style="background:#E2EFDA;color:#375623">🟢 Verde</th>
+      <th style="background:#FFF2CC;color:#7A4E00">🟡 Giallo</th>
+      <th style="background:#FCE4EC;color:#C0392B">🔴 Rosso</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>% quota mese agente</td><td>≥ 90%</td><td>75–89%</td><td>&lt; 75%</td></tr>
+      <tr><td>Collection rate CR%</td><td>≥ 50%</td><td>40–49%</td><td>&lt; 40% ⚠ no bonus</td></tr>
+      <tr><td>Nuovi clienti mese</td><td>≥ target</td><td>1 – target</td><td>0</td></tr>
+      <tr><td>MoM venduto</td><td>≥ +5%</td><td>-5% – +5%</td><td>&lt; -5%</td></tr>
+      <tr><td>YoY mese vs 2025</td><td>≥ +40%</td><td>+20–39%</td><td>&lt; +20%</td></tr>
+      <tr><td>Pipeline coverage</td><td>≥ 3x</td><td>2–3x</td><td>&lt; 2x</td></tr>
+      <tr><td>Lead lavorati 48h</td><td>≥ 80%</td><td>60–79%</td><td>&lt; 60%</td></tr>
+      <tr><td>Taciti confermati</td><td>≥ 90%</td><td>80–89%</td><td>&lt; 80%</td></tr>
+      <tr><td>Win rate prev→contratto</td><td>≥ 35%</td><td>25–34%</td><td>&lt; 25%</td></tr>
+      <tr><td>DSO crediti scaduti</td><td>&lt; 30gg</td><td>30–60gg</td><td>&gt; 60gg</td></tr>
+    </tbody>
+  </table></div>
+  <div class="sc-slbl">Glossario</div>
+  <div class="sc-card" style="overflow:hidden"><table class="sc-table">
+    <thead><tr><th style="width:12%">Sigla</th><th style="width:40%">Significato</th><th>Esempio SSI</th></tr></thead>
+    <tbody>
+      <tr><td><strong>MTD</strong></td><td>Month To Date</td><td>15 giugno: totale 1–15 giugno</td></tr>
+      <tr><td><strong>YTD</strong></td><td>Year To Date</td><td>A giugno: gen–giu 2026</td></tr>
+      <tr><td><strong>YoY</strong></td><td>Year over Year</td><td>Luglio 2026 vs luglio 2025. Target: +40%</td></tr>
+      <tr><td><strong>MoM</strong></td><td>Month over Month</td><td>Luglio vs giugno 2026</td></tr>
+      <tr><td><strong>CR%</strong></td><td>Collection Rate</td><td>V=50k, I=22k → CR=44%. Soglia bonus: 40%</td></tr>
+      <tr><td><strong>DSO</strong></td><td>Days Sales Outstanding</td><td>DSO 45gg = incassi 45gg dopo fattura</td></tr>
+      <tr><td><strong>Tacito rinnovo</strong></td><td>Rinnovo automatico senza firma</td><td>RSPP: no disdetta entro 30gg → rinnova</td></tr>
+      <tr><td><strong>Bonus eccedenza</strong></td><td>Premio se CR ≥ 40%, ogni 5k sopra target</td><td>V=40k, tgt=35k, CR=45% → +550€</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<!-- DECISIONI -->
+<div class="sc-pane" id="scp-decisioni">
+  <div class="sc-slbl">Registro decisioni — mercoledì (max 3)</div>
+  <div class="sc-card sc-card-inner">
+    <div class="sc-dec-item"><div class="sc-dec-num sc-dec-open">1</div>
+      <div style="flex:1"><input class="sc-inp sc-inp-l" type="text" placeholder="Decisione…" style="width:100%">
+        <div class="sc-dec-meta">Resp.: <input class="sc-inp" type="text" placeholder="nome"> · Scad.: <input class="sc-inp" type="text" placeholder="gg/mm"> · <span class="sc-badge sc-bg">Aperto</span></div></div>
+    </div>
+    <div class="sc-dec-item"><div class="sc-dec-num sc-dec-open">2</div>
+      <div style="flex:1"><input class="sc-inp sc-inp-l" type="text" placeholder="Decisione…" style="width:100%">
+        <div class="sc-dec-meta">Resp.: <input class="sc-inp" type="text" placeholder="nome"> · Scad.: <input class="sc-inp" type="text" placeholder="gg/mm"> · <span class="sc-badge sc-bg">Aperto</span></div></div>
+    </div>
+    <div class="sc-dec-item"><div class="sc-dec-num sc-dec-open">3</div>
+      <div style="flex:1"><input class="sc-inp sc-inp-l" type="text" placeholder="Decisione…" style="width:100%">
+        <div class="sc-dec-meta">Resp.: <input class="sc-inp" type="text" placeholder="nome"> · Scad.: <input class="sc-inp" type="text" placeholder="gg/mm"> · <span class="sc-badge sc-bg">Aperto</span></div></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /scheda page -->
 
 </body></html>

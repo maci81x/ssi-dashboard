@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SSI — Inserimento dati mensili</title>
+<style>
+:root{
+  --navy:#1F3864;--blue:#2E75B6;--lblue:#BDD7EE;--xblue:#DEEAF1;
+  --green:#375623;--lgreen:#E2EFDA;--red:#C0392B;--lred:#FCE4EC;
+  --amber:#BF8F00;--lamber:#FFF2CC;--grey:#F5F6FA;--dgrey:#555;
+  --wh:#fff;--border:#E0E4EF;--text:#1a1a2e;
+  --r:8px;--fnt:'Segoe UI',Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--fnt);background:var(--grey);color:var(--text);font-size:13px;min-height:100vh}
+
+/* TOPBAR */
+.topbar{background:var(--navy);color:#fff;padding:13px 28px;display:flex;
+  justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.topbar h1{font-size:15px;font-weight:600}
+.topbar .sub{font-size:11px;opacity:.65;margin-top:2px}
+.topbar-actions{display:flex;gap:8px}
+.btn{padding:7px 16px;border-radius:var(--r);font-size:12px;font-weight:600;
+  cursor:pointer;border:none;font-family:var(--fnt);transition:all .15s}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-primary:hover{background:#1a5a9a}
+.btn-success{background:var(--green);color:#fff}
+.btn-success:hover{background:#244d18}
+.btn-amber{background:var(--amber);color:#fff}
+.btn-amber:hover{background:#8a6600}
+.btn-ghost{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)}
+.btn-ghost:hover{background:rgba(255,255,255,.25)}
+.btn-danger{background:var(--red);color:#fff}
+.btn-sm{padding:5px 12px;font-size:11px}
+
+/* LAYOUT */
+.main{max-width:1100px;margin:0 auto;padding:20px 20px 60px}
+
+/* PERIODO SELECTOR */
+.periodo-bar{background:var(--wh);border-radius:var(--r);border:1px solid var(--border);
+  padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.periodo-bar label{font-size:12px;font-weight:600;color:var(--dgrey)}
+.periodo-bar select{font-size:13px;padding:6px 10px;border:1px solid var(--border);
+  border-radius:6px;background:#fff;cursor:pointer;font-family:var(--fnt)}
+.periodo-bar .status-badge{margin-left:auto;font-size:11px;padding:4px 12px;
+  border-radius:12px;font-weight:600}
+.sb-new{background:var(--lred);color:var(--red)}
+.sb-ok{background:var(--lgreen);color:var(--green)}
+.sb-partial{background:var(--lamber);color:var(--amber)}
+
+/* SEZIONE AGENTE */
+.ag-section{margin-bottom:14px}
+.ag-area-label{font-size:11px;font-weight:700;color:#fff;background:var(--navy);
+  padding:5px 14px;border-radius:var(--r) var(--r) 0 0;display:inline-block;
+  text-transform:uppercase;letter-spacing:.05em}
+.ag-card{background:var(--wh);border:1px solid var(--border);border-radius:0 var(--r) var(--r) var(--r);
+  box-shadow:0 1px 4px rgba(0,0,0,.05);overflow:hidden}
+.ag-header{background:var(--xblue);padding:10px 16px;display:flex;align-items:center;
+  justify-content:space-between;border-bottom:1px solid var(--border)}
+.ag-name{font-size:14px;font-weight:700;color:var(--navy)}
+.ag-body{padding:14px 16px}
+.fields-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:11px;font-weight:600;color:var(--dgrey);text-transform:uppercase;letter-spacing:.04em}
+.field input,.field textarea{border:1.5px solid var(--border);border-radius:6px;
+  padding:7px 10px;font-size:13px;font-family:var(--fnt);background:#fafafa;
+  transition:border-color .15s;color:var(--text)}
+.field input:focus,.field textarea:focus{outline:none;border-color:var(--blue);background:#fff}
+.field input.filled{background:var(--lgreen);border-color:var(--green)}
+.field input.target-field{background:var(--lamber);border-color:var(--amber)}
+.field textarea{resize:vertical;min-height:56px;font-size:12px}
+.field .hint{font-size:10px;color:#888;margin-top:2px}
+
+/* DIVIDER SEZIONI */
+.section-divider{display:flex;align-items:center;gap:10px;margin:6px 0 10px}
+.section-divider span{font-size:10px;font-weight:700;color:var(--dgrey);
+  text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+.section-divider::before,.section-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* KPIS */
+.kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+  gap:8px;padding:10px 16px;background:var(--grey);border-top:1px solid var(--border)}
+.kpi-item{text-align:center}
+.kpi-label{font-size:10px;color:var(--dgrey);font-weight:600;text-transform:uppercase}
+.kpi-value{font-size:16px;font-weight:700;color:var(--navy);margin-top:2px}
+.kpi-value.good{color:var(--green)}.kpi-value.warn{color:var(--amber)}.kpi-value.bad{color:var(--red)}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--navy);color:#fff;
+  padding:12px 20px;border-radius:var(--r);font-size:13px;font-weight:500;
+  box-shadow:0 4px 16px rgba(0,0,0,.2);transform:translateY(80px);opacity:0;
+  transition:all .25s;z-index:999;max-width:320px}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.ok{background:var(--green)}.toast.err{background:var(--red)}
+
+/* IMPORT/EXPORT BAR */
+.io-bar{background:var(--wh);border-radius:var(--r);border:1px solid var(--border);
+  padding:12px 18px;margin-bottom:18px;display:flex;align-items:center;gap:12px;
+  flex-wrap:wrap;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.io-bar .io-label{font-size:12px;color:var(--dgrey);font-weight:600}
+.io-bar .io-hint{font-size:11px;color:#999;margin-left:4px}
+
+/* REPORT BOX */
+.report-box{background:var(--lamber);border-left:4px solid var(--amber);
+  border-radius:0 var(--r) var(--r) 0;padding:10px 14px;font-size:12px;
+  color:#5a3e00;margin-top:10px;line-height:1.6}
+
+/* RESPONSIVE */
+@media(max-width:600px){
+  .topbar{padding:10px 14px}.main{padding:12px 12px 40px}
+  .fields-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <h1>SSI Dashboard — Inserimento dati mensili</h1>
+    <div class="sub">I dati sono salvati nel browser · usa Esporta/Importa per sincronizzare tra dispositivi</div>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn btn-ghost" onclick="exportData()">⬇ Esporta JSON</button>
+    <button class="btn btn-ghost" onclick="document.getElementById('import-file').click()">⬆ Importa JSON</button>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+    <button class="btn btn-success" onclick="saveAll()">💾 Salva tutto</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- PERIODO -->
+  <div class="periodo-bar">
+    <label>Anno:</label>
+    <select id="sel-anno" onchange="loadPeriodo()">
+      <option>2026</option><option>2027</option>
+    </select>
+    <label>Mese:</label>
+    <select id="sel-mese" onchange="loadPeriodo()">
+      <option value="1">Gen</option>
+      <option value="2">Feb</option>
+      <option value="3">Mar</option>
+      <option value="4">Apr</option>
+      <option value="5">Mag</option>
+      <option value="6">Giu</option>
+      <option value="7">Lug</option>
+      <option value="8">Ago</option>
+      <option value="9">Set</option>
+      <option value="10">Ott</option>
+      <option value="11">Nov</option>
+      <option value="12">Dic</option>
+    </select>
+    <div id="periodo-status" class="status-badge sb-new">Nuovo</div>
+    <button class="btn btn-primary btn-sm" onclick="saveAll()" style="margin-left:8px">Salva mese</button>
+    <button class="btn btn-sm" style="background:var(--lred);color:var(--red)" onclick="deletePeriodo()">Elimina mese</button>
+  </div>
+
+  <!-- SYNC INFO -->
+  <div class="io-bar">
+    <span class="io-label">Sincronizzazione tra dispositivi:</span>
+    <span class="io-hint">Fisso → Esporta JSON → copia file sul portatile → Importa JSON (e viceversa)</span>
+    <button class="btn btn-amber btn-sm" onclick="exportData()" style="margin-left:auto">Esporta per sincronizzare</button>
+  </div>
+
+  <!-- AGENTI -->
+  <div id="agents-container"></div>
+
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+const AGENTS = [['alessandro_raia', 'Alessandro Raia', 'FI'], ['mario_rufolo', 'Mario Rufolo', 'FI'], ['alberto_mancini', 'Alberto Mancini', 'FI'], ['davide_gaziano', 'Davide Gaziano', 'SI'], ['massimo_necci', 'Massimo Necci', 'SI'], ['gigliola_gorini', 'Gigliola Gorini', 'SI'], ['mattia_guardiani', 'Mattia Guardiani', 'SI'], ['francesco_pelliccia', 'Francesco Pelliccia', 'SI'], ['marco_macinai', 'Marco Macinai', 'DIR'], ['giovanna_panti', 'Giovanna Panti', 'DIR'], ['roberto_macinai', 'Roberto Macinai', 'DIR']];
+const MONTHS = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+const AREAS  = {'FI': 'Area Fiorentina', 'SI': 'Area Senese', 'DIR': 'Direzione'};
+
+// ── STORAGE KEY ──────────────────────────────────────────────────────────
+function storageKey(anno, mese) {
+  return `ssi_dati_${anno}_${String(mese).padStart(2,'0')}`;
+}
+function targetKey(agKey) {
+  return `ssi_target_${agKey}`;
+}
+
+// ── LOAD / SAVE ──────────────────────────────────────────────────────────
+function loadPeriodo() {
+  const anno = document.getElementById('sel-anno').value;
+  const mese = document.getElementById('sel-mese').value;
+  const raw  = localStorage.getItem(storageKey(anno, mese));
+  const data = raw ? JSON.parse(raw) : {};
+  
+  AGENTS.forEach(([agKey]) => {
+    const ag = data[agKey] || {};
+    setValue(`${agKey}_venduto`,     ag.venduto     || '');
+    setValue(`${agKey}_incassato`,   ag.incassato   || '');
+    setValue(`${agKey}_taciti`,      ag.taciti      || '');
+    setValue(`${agKey}_nuovi`,       ag.nuovi       || '');
+    setValue(`${agKey}_note`,        ag.note        || '');
+    // Target (da storage separato, persistono)
+    const tgt = JSON.parse(localStorage.getItem(targetKey(agKey)) || '{}');
+    setValue(`${agKey}_tgt_venduto`, tgt.venduto    || '');
+    setValue(`${agKey}_tgt_incassato`,tgt.incassato || '');
+    setValue(`${agKey}_tgt_nuovi`,   tgt.nuovi      || '');
+    updateKpis(agKey);
+  });
+  updatePeriodoBadge(!!raw, data);
+}
+
+function saveAll() {
+  const anno = document.getElementById('sel-anno').value;
+  const mese = document.getElementById('sel-mese').value;
+  const data = {};
+  
+  AGENTS.forEach(([agKey]) => {
+    data[agKey] = {
+      venduto:   parseNum(`${agKey}_venduto`),
+      incassato: parseNum(`${agKey}_incassato`),
+      taciti:    parseNum(`${agKey}_taciti`),
+      nuovi:     parseNum(`${agKey}_nuovi`),
+      note:      (document.getElementById(`${agKey}_note`)||{}).value || '',
+    };
+    // Salva target separatamente (persistono oltre il mese)
+    const tgt = {
+      venduto:   parseNum(`${agKey}_tgt_venduto`),
+      incassato: parseNum(`${agKey}_tgt_incassato`),
+      nuovi:     parseNum(`${agKey}_tgt_nuovi`),
+    };
+    localStorage.setItem(targetKey(agKey), JSON.stringify(tgt));
+    updateKpis(agKey);
+  });
+  
+  localStorage.setItem(storageKey(anno, mese), JSON.stringify(data));
+  updatePeriodoBadge(true, data);
+  
+  // Aggiorna marca temporale per la dashboard
+  localStorage.setItem('ssi_last_update', new Date().toLocaleDateString('it-IT'));
+  toast('Dati salvati ✓', 'ok');
+}
+
+function deletePeriodo() {
+  if(!confirm('Eliminare tutti i dati di questo mese?')) return;
+  const anno = document.getElementById('sel-anno').value;
+  const mese = document.getElementById('sel-mese').value;
+  localStorage.removeItem(storageKey(anno, mese));
+  loadPeriodo();
+  toast('Mese eliminato', 'err');
+}
+
+// ── EXPORT / IMPORT ──────────────────────────────────────────────────────
+function exportData() {
+  const dump = {};
+  for(let i=0; i<localStorage.length; i++){
+    const k = localStorage.key(i);
+    if(k && k.startsWith('ssi_')) dump[k] = localStorage.getItem(k);
+  }
+  const blob = new Blob([JSON.stringify(dump,null,2)], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const d    = new Date().toISOString().slice(0,10);
+  a.href = url; a.download = `ssi_dati_${d}.json`; a.click();
+  URL.revokeObjectURL(url);
+  toast('File esportato — copialo sul portatile e usa Importa ✓','ok');
+}
+
+function importData(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const dump = JSON.parse(ev.target.result);
+      Object.entries(dump).forEach(([k,v]) => {
+        if(k.startsWith('ssi_')) localStorage.setItem(k,v);
+      });
+      loadPeriodo();
+      toast(`Importati ${Object.keys(dump).length} record ✓`, 'ok');
+    } catch(err) {
+      toast('Errore nel file JSON', 'err');
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ── HELPERS ──────────────────────────────────────────────────────────────
+function setValue(id, val) {
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.value = val;
+  el.classList.toggle('filled', !!val && !el.classList.contains('target-field'));
+}
+function parseNum(id) {
+  const el = document.getElementById(id);
+  if(!el || !el.value) return 0;
+  return parseFloat(el.value.replace(/[.,]/g,'').replace(',','.')) || 0;
+}
+function fmt(n){ return n ? '€'+Math.round(n).toLocaleString('it-IT') : '—'; }
+function fmtN(n){ return n || '—'; }
+
+function updatePeriodoBadge(hasData, data) {
+  const el = document.getElementById('periodo-status');
+  if(!hasData){ el.className='status-badge sb-new'; el.textContent='Nuovo'; return; }
+  const hasValues = AGENTS.some(([k])=>data[k]&&(data[k].venduto||data[k].incassato));
+  el.className = hasValues ? 'status-badge sb-ok' : 'status-badge sb-partial';
+  el.textContent = hasValues ? 'Salvato' : 'Parziale';
+}
+
+function updateKpis(agKey) {
+  const v  = parseNum(`${agKey}_venduto`);
+  const i  = parseNum(`${agKey}_incassato`);
+  const tv = parseNum(`${agKey}_tgt_venduto`);
+  const ti = parseNum(`${agKey}_tgt_incassato`);
+  const cr = v>0 ? Math.round(i/v*100) : null;
+  const pv = tv>0 ? Math.round(v/tv*100) : null;
+  const pi = ti>0 ? Math.round(i/ti*100) : null;
+  
+  const set = (id, val, good, warn) => {
+    const el = document.getElementById(id); if(!el) return;
+    el.textContent = val;
+    el.className = 'kpi-value' + (val==='—' ? '' : val>=good ? ' good' : val>=warn ? ' warn' : ' bad');
+  };
+  
+  set(`${agKey}_kpi_cr`,   cr!==null ? cr+'%' : '—', 50, 40);
+  set(`${agKey}_kpi_pv`,   pv!==null ? pv+'%' : '—', 90, 75);
+  set(`${agKey}_kpi_pi`,   pi!==null ? pi+'%' : '—', 90, 75);
+  
+  // Mini report
+  buildMiniReport(agKey, v, i, cr, pv, pi);
+}
+
+// ── MINI REPORT AUTOMATICO ────────────────────────────────────────────────
+function buildMiniReport(agKey, v, i, cr, pv, pi) {
+  const el = document.getElementById(`${agKey}_report`);
+  if(!el || !v) { if(el) el.textContent=''; return; }
+  
+  const nome = AGENTS.find(([k])=>k===agKey)?.[1]?.split(' ')[1] || agKey;
+  const anno = document.getElementById('sel-anno').value;
+  const mese = parseInt(document.getElementById('sel-mese').value);
+  
+  // Leggi mese precedente per confronto
+  const prevMese = mese===1 ? 12 : mese-1;
+  const prevAnno = mese===1 ? anno-1 : anno;
+  const prevRaw  = localStorage.getItem(storageKey(prevAnno, prevMese));
+  const prevData = prevRaw ? JSON.parse(prevRaw) : {};
+  const prevAg   = prevData[agKey] || {};
+  const prevV    = prevAg.venduto || 0;
+  const prevN    = prevAg.nuovi   || 0;
+  
+  const nuovi = parseNum(`${agKey}_nuovi`);
+  const note  = (document.getElementById(`${agKey}_note`)||{}).value || '';
+  
+  // Delta MoM
+  const momDelta = prevV>0 ? Math.round((v-prevV)/prevV*100) : null;
+  const momSign  = momDelta>0?'+':'';
+  
+  // Costruisci testo
+  let parts = [];
+  
+  // Performance venduto
+  if(pv!==null){
+    if(pv>=90)      parts.push(`✅ venduto ${pv}% del target`);
+    else if(pv>=75) parts.push(`⚠️ venduto ${pv}% del target — sotto quota`);
+    else            parts.push(`🔴 venduto ${pv}% del target — azione richiesta`);
+  } else {
+    parts.push(`venduto ${fmt(v)}`);
+  }
+  
+  // CR%
+  if(cr!==null){
+    if(cr>=50)      parts.push(`CR ${cr}% ✅`);
+    else if(cr>=40) parts.push(`CR ${cr}% ⚠️ (soglia bonus)`);
+    else            parts.push(`CR ${cr}% 🔴 (sotto soglia bonus)`);
+  }
+  
+  // MoM
+  if(momDelta!==null){
+    if(Math.abs(momDelta)>=5)
+      parts.push(`${momSign}${momDelta}% vs mese precedente`);
+  }
+  
+  // Nuovi clienti
+  if(nuovi>0) parts.push(`${nuovi} nuovi client${nuovi===1?'e':'i'}`);
+  
+  // Note DV
+  if(note) parts.push(`Note DV: ${note}`);
+  
+  el.textContent = `${nome}: ` + parts.join(' · ');
+}
+
+// ── TOAST ──────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ el.className='toast'; }, 3000);
+}
+
+// ── BUILD UI ──────────────────────────────────────────────────────────────
+function buildUI() {
+  const container = document.getElementById('agents-container');
+  
+  // Raggruppa per area
+  const byArea = {};
+  AGENTS.forEach(([agKey, agName, area]) => {
+    if(!byArea[area]) byArea[area] = [];
+    byArea[area].push([agKey, agName]);
+  });
+  
+  const areaOrder = ['FI','SI','DIR'];
+  let html = '';
+  
+  areaOrder.forEach(area => {
+    if(!byArea[area]) return;
+    html += `<div class="ag-section">
+      <div class="ag-area-label">${AREAS[area]||area}</div>
+      <div class="ag-card">`;
+    
+    byArea[area].forEach(([agKey, agName], idx) => {
+      if(idx>0) html += '<hr style="border:none;border-top:1px solid var(--border)">';
+      html += `
+      <div class="ag-header">
+        <div class="ag-name">${agName}</div>
+        <div style="font-size:11px;color:var(--dgrey)">${area}</div>
+      </div>
+      <div class="ag-body">
+        <div class="section-divider"><span>Dati mese</span></div>
+        <div class="fields-grid">
+          <div class="field">
+            <label>Venduto €</label>
+            <input type="number" id="${agKey}_venduto" placeholder="0"
+              oninput="this.classList.toggle('filled',!!this.value);updateKpis('${agKey}')">
+          </div>
+          <div class="field">
+            <label>Incassato €</label>
+            <input type="number" id="${agKey}_incassato" placeholder="0"
+              oninput="this.classList.toggle('filled',!!this.value);updateKpis('${agKey}')">
+          </div>
+          <div class="field">
+            <label>Taciti rinnovi €</label>
+            <input type="number" id="${agKey}_taciti" placeholder="0"
+              oninput="this.classList.toggle('filled',!!this.value);updateKpis('${agKey}')">
+          </div>
+          <div class="field">
+            <label>Nuovi clienti</label>
+            <input type="number" id="${agKey}_nuovi" placeholder="0"
+              oninput="this.classList.toggle('filled',!!this.value);updateKpis('${agKey}')">
+            <span class="hint">Contratti con clienti nuovi (mai stati SSI)</span>
+          </div>
+        </div>
+        
+        <div class="section-divider"><span>Target mese (salvati permanentemente)</span></div>
+        <div class="fields-grid">
+          <div class="field">
+            <label>Target venduto €</label>
+            <input type="number" id="${agKey}_tgt_venduto" placeholder="0" class="target-field"
+              oninput="updateKpis('${agKey}')">
+          </div>
+          <div class="field">
+            <label>Target incassato €</label>
+            <input type="number" id="${agKey}_tgt_incassato" placeholder="0" class="target-field"
+              oninput="updateKpis('${agKey}')">
+          </div>
+          <div class="field">
+            <label>Target nuovi clienti</label>
+            <input type="number" id="${agKey}_tgt_nuovi" placeholder="0" class="target-field"
+              oninput="updateKpis('${agKey}')">
+          </div>
+          <div class="field">
+            <label>Note DV (qualitative)</label>
+            <textarea id="${agKey}_note" placeholder="es. forte su hunter, da spingere su CCIAA..."
+              oninput="updateKpis('${agKey}')"></textarea>
+          </div>
+        </div>
+      </div>
+      
+      <!-- KPI STRIP -->
+      <div class="kpi-strip">
+        <div class="kpi-item">
+          <div class="kpi-label">CR%</div>
+          <div class="kpi-value" id="${agKey}_kpi_cr">—</div>
+        </div>
+        <div class="kpi-item">
+          <div class="kpi-label">% Target venduto</div>
+          <div class="kpi-value" id="${agKey}_kpi_pv">—</div>
+        </div>
+        <div class="kpi-item">
+          <div class="kpi-label">% Target incassato</div>
+          <div class="kpi-value" id="${agKey}_kpi_pi">—</div>
+        </div>
+      </div>
+      
+      <!-- MINI REPORT -->
+      <div class="report-box" id="${agKey}_report" style="margin:0 16px 12px;display:block"></div>
+      `;
+    });
+    
+    html += '</div></div>';
+  });
+  
+  container.innerHTML = html;
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+// Imposta mese corrente
+const now = new Date();
+document.getElementById('sel-anno').value = now.getFullYear();
+document.getElementById('sel-mese').value = now.getMonth()+1;
+buildUI();
+loadPeriodo();
+</script>
+</body>
+</html>
