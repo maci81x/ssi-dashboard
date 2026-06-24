@@ -465,6 +465,7 @@ tr.tot td{background:#e8f0fb;font-weight:700;color:var(--navy)}
 .sc-table tr:last-child td{border-bottom:none}
 .sc-table tr:hover td{background:#f8f9ff}
 .sc-table .num{text-align:right;font-variant-numeric:tabular-nums}
+.sc-area-sep td{background:#D6E4F0;font-weight:700;color:#1A3A5C;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
 .sc-area{background:var(--lblue)!important;font-weight:700;color:var(--navy);font-size:11px}
 .sc-prog-wrap{height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:4px}
 .sc-prog-fill{height:100%;border-radius:3px}
@@ -1681,7 +1682,6 @@ function scCrescitaView(v){
 // ── VISTA GRAFICI — barre mensili per agente ────────────────
 function scBuildCrescitaGrafici(){
   const cont=document.getElementById('sc-crescita-grafici');if(!cont)return;
-  // Legge il periodo più recente in SC_SETT
   const settYears=Object.keys(SC_SETT||{}).map(Number).sort((a,b)=>b-a);
   const settYear=settYears[0]||null;
   const settMonths=settYear?Object.keys(SC_SETT[settYear]).map(Number).sort((a,b)=>b-a):[];
@@ -1691,12 +1691,14 @@ function scBuildCrescitaGrafici(){
     &&SC_SETT_LABELS[settYear]&&SC_SETT_LABELS[settYear][settMonth])
     ||(Object.values(settData)[0]||[]).map((_,i)=>`Sett ${i+1}`);
   const settMonthName=settMonth?MESI_LABELS[settMonth-1]:'';
+  const tk=v=>v>=1000?(Math.round(v/1000)+'k'):''+Math.round(v);
   const areaGroups=[
     {label:'Area Fiorentina',agents:['Alessandro Raia','Mario Rufolo','Alberto Mancini']},
     {label:'Area Senese',agents:['Davide Gaziano','Massimo Necci','Gigliola Gorini','Mattia Guardiani','Francesco Pelliccia']},
     {label:'Direzione',agents:['Marco Macinai','Giovanna Panti','Roberto Macinai']},
   ];
   let html='';
+  const toRender=[];
   areaGroups.forEach(({label,agents})=>{
     const vis=agents.filter(ag=>SC_V26[ag]!==undefined);
     if(!vis.length)return;
@@ -1704,21 +1706,22 @@ function scBuildCrescitaGrafici(){
       <div style="font-size:11px;font-weight:700;color:#fff;background:var(--navy);padding:4px 14px;border-radius:8px 8px 0 0;display:inline-block;text-transform:uppercase;letter-spacing:.05em">${label}</div>
       <div style="background:#fff;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:14px" class="sc-ag-grid">`;
     vis.forEach(ag=>{
-      const agId=ag.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
-      const hasSett=(settData[ag]||[]).some(v=>v>0);
+      const agKey='ag_'+ag.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
+      const settVals=(settData[ag]||[]);
+      const hasSett=settVals.some(v=>v>0);
       html+=`<div>
         <div style="font-size:12px;font-weight:600;color:var(--navy);margin-bottom:6px">${ag}</div>
-        <div style="position:relative;height:150px"><canvas id="scg-${agId}"></canvas></div>
-        ${hasSett?`<div style="font-size:10px;color:var(--dgrey);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin:8px 0 4px">${settMonthName} — cumulato settimane</div><div style="position:relative;height:120px"><canvas id="scs-${agId}"></canvas></div>`:''}
+        <div style="position:relative;height:150px"><canvas id="${agKey}_monthly"></canvas></div>
+        ${hasSett?`<div style="font-size:10px;color:var(--dgrey);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin:8px 0 4px">${settMonthName} — cumulato settimane</div><div style="position:relative;height:120px"><canvas id="${agKey}_weekly"></canvas></div>`:''}
       </div>`;
+      toRender.push({ag,agKey,settVals,hasSett});
     });
     html+='</div></div>';
   });
   cont.innerHTML=html;
-  areaGroups.forEach(({agents})=>{
-    agents.filter(ag=>SC_V26[ag]!==undefined).forEach(ag=>{
-      const agId=ag.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
-      const canvas=document.getElementById('scg-'+agId);if(!canvas)return;
+  setTimeout(()=>{
+    toRender.forEach(({ag,agKey,settVals,hasSett})=>{
+      const canvas=document.getElementById(agKey+'_monthly');if(!canvas)return;
       const d26=(SC_V26[ag]||[]).map(v=>v||0);
       const has25=!!(SC_V25[ag]&&SC_V25[ag].some(v=>v>0));
       const datasets=[];
@@ -1729,12 +1732,9 @@ function scBuildCrescitaGrafici(){
         options:{responsive:true,maintainAspectRatio:false,
           plugins:{legend:{position:'top',labels:{boxWidth:10,font:{size:10}}},
             tooltip:{callbacks:{label:c=>'€'+Math.round(c.raw).toLocaleString('it-IT')}}},
-          scales:{y:{ticks:{callback:v=>v>=1000?(Math.round(v/1000)+'k'):''+Math.round(v)},grid:{color:'rgba(0,0,0,.06)'}},
-            x:{grid:{display:false}}}}});
-      // Grafico cumulato settimanale
-      const settVals=(settData[ag]||[]);
-      if(settVals.some(v=>v>0)){
-        const sc=document.getElementById('scs-'+agId);if(!sc)return;
+          scales:{y:{ticks:{callback:tk},grid:{color:'rgba(0,0,0,.06)'}},x:{grid:{display:false}}}}});
+      if(hasSett){
+        const sc=document.getElementById(agKey+'_weekly');if(!sc)return;
         new Chart(sc,{type:'line',
           data:{labels:settLabels,datasets:[{
             label:'MTD cumulato',data:settVals,
@@ -1744,11 +1744,10 @@ function scBuildCrescitaGrafici(){
           options:{responsive:true,maintainAspectRatio:false,
             plugins:{legend:{display:false},
               tooltip:{callbacks:{label:c=>'€'+Math.round(c.raw).toLocaleString('it-IT')}}},
-            scales:{y:{min:0,ticks:{callback:v=>v>=1000?(Math.round(v/1000)+'k'):''+Math.round(v)},grid:{color:'rgba(0,0,0,.06)'}},
-              x:{grid:{display:false}}}}});
+            scales:{y:{min:0,ticks:{callback:tk},grid:{color:'rgba(0,0,0,.06)'}},x:{grid:{display:false}}}}});
       }
     });
-  });
+  },80);
 }
 
 // ── VISTA CONFRONTO — 4 chart analitici ────────────────────
@@ -1786,7 +1785,7 @@ function scBuildCrescitaConfronto(){
       </div>
       <div class="sc-card sc-card-inner">
         <div class="sc-card-title">YoY Δ% Gen–Giu 2025 → 2026 (verde ≥40%, rosso &lt;0%)</div>
-        <div style="position:relative;height:220px"><canvas id="scc-yoy"></canvas></div>
+        <div style="position:relative;height:320px"><canvas id="scc-yoy"></canvas></div>
       </div>
     </div>
     <div class="sc-card sc-card-inner" style="margin-bottom:14px">
@@ -1811,7 +1810,7 @@ function scBuildCrescitaConfronto(){
       borderWidth:0,borderRadius:4}]},
     options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>(c.raw>=0?'+':'')+c.raw+'%'}}},
-      scales:{x:{ticks:{callback:v=>v+'%'},grid:{color:'rgba(0,0,0,.06)'}},y:{ticks:{font:{size:10}}}}}});
+      scales:{x:{ticks:{callback:v=>v+'%'},grid:{color:'rgba(0,0,0,.06)'}},y:{ticks:{font:{size:10},autoSkip:false}}}}});
 
   const trendLbls=['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
   new Chart(document.getElementById('scc-trend'),{type:'line',
@@ -2047,9 +2046,20 @@ window.showPage=function(id){
         <th class="num">Recupero<br>crediti €</th>
       </tr></thead>
       <tbody id="sc-lead-tbody">
-        <tr><td colspan="7" style="text-align:center;color:var(--dgrey);font-style:italic;padding:16px">
-          Carica Excel con colonne J-O compilate
-        </td></tr>
+        <tr class="sc-area-sep"><td colspan="7">Area Fiorentina — Capo Area: Alessandro Raia</td></tr>
+        <tr><td>Alessandro Raia</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+        <tr><td>Mario Rufolo</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+        <tr><td>Alberto Mancini</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+        <tr class="sc-area-sep"><td colspan="7">Area Senese — Capo Area: Massimo Necci</td></tr>
+        <tr><td>Davide Gaziano</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+        <tr><td>Massimo Necci</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+        <tr><td>Gigliola Gorini</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+        <tr><td>Mattia Guardiani</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+        <tr><td>Francesco Pelliccia</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+        <tr class="sc-area-sep"><td colspan="7">Direzione</td></tr>
+        <tr><td>Marco Macinai</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+        <tr><td>Giovanna Panti</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+        <tr><td>Roberto Macinai</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
       </tbody>
     </table>
   </div>
