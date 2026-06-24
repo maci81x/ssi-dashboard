@@ -1805,7 +1805,7 @@ function scBuildCrescitaConfronto(){
         tooltip:{callbacks:{label:c=>{const tot=c.dataset.data.reduce((a,b)=>a+b,0);return c.label+': '+Math.round(c.raw/tot*100)+'% ('+fmtN(c.raw)+')';}}}}}});
 
   new Chart(document.getElementById('scc-yoy'),{type:'bar',
-    data:{labels:yoySorted.map(x=>x.ag.split(' ').slice(-1)[0]),datasets:[{
+    data:{labels:yoySorted.map(x=>x.ag),datasets:[{
       label:'YoY Δ%',data:yoySorted.map(x=>x.d),
       backgroundColor:yoySorted.map(x=>x.d<0?'#C0392B':x.d>=40?'#375623':'#BF8F00'),
       borderWidth:0,borderRadius:4}]},
@@ -1826,7 +1826,7 @@ function scBuildCrescitaConfronto(){
       scales:{y:{ticks:{callback:tk},grid:{color:'rgba(0,0,0,.06)'}},x:{grid:{display:false}}}}});
 
   new Chart(document.getElementById('scc-cmp'),{type:'bar',
-    data:{labels:cmpAg.map(ag=>ag.split(' ').slice(-1)[0]),datasets:[
+    data:{labels:cmpAg,datasets:[
       {label:'Gen–Giu 2025',data:cmp25,backgroundColor:'rgba(55,86,35,.6)',borderWidth:0,borderRadius:3},
       {label:'Gen–Giu 2026',data:cmp26,backgroundColor:'rgba(31,56,100,.8)',borderWidth:0,borderRadius:3}
     ]},
