@@ -1514,6 +1514,7 @@ function scTab(id){
   document.querySelectorAll('.sc-pane').forEach(p=>p.classList.toggle('active',p.id==='scp-'+id));
   if(id==='grafici')scBuildCharts();
   if(id==='crescita')scBuildCrescita();
+  if(id==='lead')scBuildSettTable();
 }
 
 // INIT
@@ -1835,6 +1836,66 @@ function scBuildCrescitaConfronto(){
       scales:{y:{ticks:{callback:tk},grid:{color:'rgba(0,0,0,.06)'}},x:{ticks:{font:{size:10}},grid:{display:false}}}}});
 }
 
+// ── TABELLA ANDAMENTO SETTIMANALE ───────────────────────────
+let _scSettTableBuilt=false;
+function scBuildSettTable(){
+  if(_scSettTableBuilt)return;_scSettTableBuilt=true;
+  const wrap=document.getElementById('sc-sett-table-wrap');if(!wrap)return;
+  const settD=((SC_SETT[2026]||{})[6])||{};
+  const fmtE=n=>n>0?'€'+Math.round(n).toLocaleString('it-IT'):'—';
+  const sem=v=>v>5000?'🟢':v>=1000?'🟡':'🔴';
+  const ord=n=>n+'°';
+  // calcola venduto settimana e MTD per ogni agente
+  const agData={};
+  Object.keys(settD).forEach(ag=>{
+    const vals=settD[ag]||[];
+    const mtd=vals.length>1?vals[vals.length-1]:(vals[0]||0);
+    const prev=vals.length>1?vals[vals.length-2]:0;
+    agData[ag]={week:Math.round((mtd-prev)*100)/100,mtd};
+  });
+  // ranking globale per venduto settimana decrescente
+  const ranked=Object.keys(agData).filter(ag=>agData[ag].week>0)
+    .sort((a,b)=>agData[b].week-agData[a].week);
+  const rankOf=ag=>{const i=ranked.indexOf(ag);return i>=0?i+1:null;};
+  const areaGroups=[
+    {label:'Area Fiorentina — Capo Area: Alessandro Raia',agents:['Alessandro Raia','Mario Rufolo','Alberto Mancini']},
+    {label:'Area Senese — Capo Area: Massimo Necci',agents:['Davide Gaziano','Massimo Necci','Gigliola Gorini','Mattia Guardiani','Francesco Pelliccia']},
+    {label:'Direzione',agents:['Marco Macinai','Giovanna Panti','Roberto Macinai']},
+  ];
+  let rows='';
+  areaGroups.forEach(({label,agents})=>{
+    rows+=`<tr class="sc-area-sep"><td colspan="5">${label}</td></tr>`;
+    agents.forEach(ag=>{
+      const d=agData[ag]||{week:0,mtd:0};
+      const r=rankOf(ag);
+      rows+=`<tr>
+        <td><strong>${ag}</strong></td>
+        <td class="num">${fmtE(d.week)}</td>
+        <td class="num">${fmtE(d.mtd)}</td>
+        <td class="num" style="text-align:center">${r?ord(r):'—'}</td>
+        <td class="num" style="text-align:center;font-size:16px">${sem(d.week)}</td>
+      </tr>`;
+    });
+  });
+  wrap.innerHTML=`
+    <div class="sc-slbl">Andamento settimanale — 15-19 giugno 2026</div>
+    <div style="font-size:11px;color:var(--dgrey);margin-bottom:10px">
+      Venduto della settimana per agente · carica il prossimo Excel ogni lunedì per aggiornare
+    </div>
+    <div class="sc-card sc-card-inner" style="overflow:hidden;margin-bottom:20px">
+      <table class="sc-table">
+        <thead><tr>
+          <th style="width:22%">Agente</th>
+          <th class="num">Venduto settimana €</th>
+          <th class="num">MTD giugno €</th>
+          <th class="num" style="text-align:center">Ranking</th>
+          <th class="num" style="text-align:center">Semaforo</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
 // GRAFICI
 let scChartsBuilt=false;
 function scBuildCharts(){
@@ -2033,6 +2094,7 @@ window.showPage=function(id){
 
 <!-- LEAD & CREDITI -->
 <div class="sc-pane" id="scp-lead">
+  <div id="sc-sett-table-wrap"></div>
   <div class="sc-slbl">Lead ricevuti e lavorati — Recupero crediti</div>
   <div class="sc-card sc-card-inner" style="overflow:hidden">
     <table class="sc-table">
