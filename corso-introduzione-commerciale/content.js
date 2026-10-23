@@ -21,14 +21,14 @@ blocchi:[
 <p>Abbiamo sei sedi: <strong>Poggibonsi</strong> (sede principale, Loc. Drove, Centro Direzionale EXIT), <strong>Siena</strong>, <strong>Pontedera</strong>, <strong>Pisa</strong>, <strong>Firenze</strong> e <strong>Grosseto</strong>.</p>
 <p>Il nostro scopo, come scritto nel mansionario: <em>ogni lavoratore torni a casa sano e salvo ogni giorno</em>. Il cliente ci sceglie perché gli togliamo un pensiero: scadenze, documenti, corsi e rapporti con ASL e ispettori li gestiamo noi.</p>`},
 {tipo:"tabella", h:"Chi fa cosa", cols:["Area","Responsabile","Cosa fa per te"], rows:[
- ["Direzione Commerciale","Roberto Macinai","Tuo riferimento diretto: obiettivi, appuntamenti, riunione del venerdì, report serale"],
+ ["Capo Area","Alessandro Raia","Tuo riferimento diretto: obiettivi, appuntamenti, riunione del venerdì, report serale"],
+ ["Direzione Commerciale","Roberto Macinai","Strategia commerciale, listino, obiettivi dell'area"],
  ["Marketing e HR","Marco Macinai","Lead da campagne e newsletter, materiale promozionale"],
- ["Produzione (tecnici)","Giovanna Panti","Esegue quello che vendi: DVR, sopralluoghi, HACCP, misure"],
+ ["Produzione tecnica (RTO)","Giovanna Panti e Samuele Corti","Esegue quello che vendi: DVR, sopralluoghi, HACCP, misure"],
  ["Formazione","Niccolò Golini","Calendario corsi, aule, attestati"],
- ["Sorveglianza sanitaria (RTO)","Samuele Corti","Medici competenti, visite, protocolli"],
  ["Amministrazione","Francesco Martini","Fatture, incassi, insoluti"],
- ["Segreteria","Gaia Deplano","Smistamento, appuntamenti, documenti"]
-], nota:"Riferimento: organigramma SSI Rev. 15 (agosto 2026). Per qualsiasi dubbio tecnico non improvvisare: chiedi al tecnico tramite il direttore commerciale."},
+ ["Segreteria e sorveglianza sanitaria","Gaia Deplano e la segreteria","Smistamento, appuntamenti, documenti; medici competenti, visite, protocolli"]
+], nota:"Riferimento: organigramma SSI Rev. 15 (agosto 2026). Per qualsiasi dubbio tecnico non improvvisare: chiedi al tecnico tramite il capo area."},
 {tipo:"testo", h:"Cosa vendiamo, in numeri", html:`
 <p>Dal 1° gennaio 2025 a oggi SSI ha venduto servizi a <strong>oltre 850 clienti</strong>. Ecco come si divide il venduto per area (fonte: dati Securmars nella dashboard commerciale, offerte accettate).</p>`},
 {tipo:"barre", h:"Peso di ogni area sul venduto (gen 2025 – ott 2026)", dati:[
