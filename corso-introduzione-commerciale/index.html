@@ -147,6 +147,15 @@ ol.ask li::before{content:counter(q);font:700 .9rem var(--f-display);color:var(-
 .who{font-size:.85rem;opacity:.9}
 .who button{background:transparent;border:0;color:#fff;text-decoration:underline;cursor:pointer;font:inherit;padding:0 0 0 6px}
 .install{display:none}
+
+:root{--brand:#0b5d63}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#141f21;--paper:#1b2a2c;--line:#2c3f41;--teal:#5fa5a7;--teal-deep:#a3cfd0;--teal-soft:#1f3537;--sun:#d9b44a;--sun-soft:#352f1a;--brand:#0f4a4f}}
+:root[data-theme="dark"]{--bg:#141f21;--paper:#1b2a2c;--line:#2c3f41;--teal:#5fa5a7;--teal-deep:#a3cfd0;--teal-soft:#1f3537;--sun:#d9b44a;--sun-soft:#352f1a;--brand:#0f4a4f}
+.top,body::before{background:var(--brand)!important;color:#fff}
+.btn{background:var(--brand)}
+body.out .wrap{grid-template-columns:minmax(0,1fr)}
+body.out nav.idx,body.out .prog,body.out .menu-btn{display:none!important}
+body.out main{display:flex;justify-content:center}
 </style>
 </head>
 <body>
@@ -327,16 +336,18 @@ document.getElementById("menuBtn").addEventListener("click",e=>{const n=document
 
 
 function showLogin(msg){
+  document.body.classList.add("out");
   document.getElementById("idx").innerHTML = ""; document.getElementById("who").textContent = "";
-  document.getElementById("view").innerHTML = `<form class="login" id="lf"><h1>Benvenuto in SSI Start</h1><p class="small">Inserisci il codice personale che ti ha dato il capo area. Lo chiediamo una volta sola: i tuoi test vengono salvati e li ritrovi su qualunque dispositivo.</p><label for="cod"><b>Codice agente</b></label><input id="cod" autocomplete="off" autocapitalize="characters" placeholder="SSI-XXXXX" required><button class="btn" type="submit">Entra</button><p class="err" id="lerr" aria-live="polite">${msg||""}</p></form>`;
+  document.getElementById("view").innerHTML = `<form class="login" id="lf"><h1>Benvenuto in SSI Start</h1><p class="small">Inserisci il codice personale che ti ha dato il capo area. Lo chiediamo una volta sola: i tuoi test vengono salvati e li ritrovi su qualunque dispositivo.</p><label for="cod"><b>Codice agente</b></label><input id="cod" autocomplete="off" autocapitalize="characters" placeholder="es. SSI-7KQ2M" required><button class="btn" type="submit">Entra</button><p class="err" id="lerr" aria-live="polite">${msg||""}</p></form>`;
   document.getElementById("lf").addEventListener("submit", async ev => {
-    ev.preventDefault(); const v = document.getElementById("cod").value.trim().toUpperCase(); const e = document.getElementById("lerr"); e.textContent = "Controllo…";
+    ev.preventDefault(); const v = document.getElementById("cod").value.trim().toUpperCase(); const e = document.getElementById("lerr"); if(/^\d{4,8}$/.test(v)){ e.textContent = "Questo sembra il PIN della pagina risultati: qui serve il codice agente, che inizia con SSI- (lo crea il capo area)."; return; } e.textContent = "Controllo…";
     try{ const r = await rpc("start_login", {p_codice: v}); if(!r){ e.textContent = "Codice non valido. Controlla di averlo scritto bene o chiedilo al capo area."; return; }
       codice = v; try{ localStorage.setItem(LSKEY + "-codice", v); }catch(x){} entra(r);
     }catch(x){ e.textContent = "Non riesco a collegarmi. Controlla la connessione e riprova."; }
   });
 }
 function entra(r){
+  document.body.classList.remove("out");
   if(r){ const mm = Object.assign({}, r.moduli || {});
     for(const k in state.moduli){ if(!mm[k] || (state.moduli[k].best||0) > (mm[k].best||0) || (state.moduli[k].tent||0) > (mm[k].tent||0)) mm[k] = state.moduli[k]; }
     state.moduli = mm; if(!state.nome) state.nome = r.nome || ""; lsSave(); }
