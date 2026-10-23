@@ -148,6 +148,29 @@ ol.ask li::before{content:counter(q);font:700 .9rem var(--f-display);color:var(-
 .who button{background:transparent;border:0;color:#fff;text-decoration:underline;cursor:pointer;font:inherit;padding:0 0 0 6px}
 .install{display:none}
 
+.simlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.simcard{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:6px;text-align:left;cursor:pointer;font:inherit;color:inherit}
+.simcard:hover{border-color:var(--teal)}
+.simcard .t{font:700 1.05rem var(--f-display);color:var(--teal-deep)}
+.simcard .m{font-size:.82rem;color:var(--ink-2)}
+.simcard .b{font-weight:700;font-variant-numeric:tabular-nums}
+.chat{display:flex;flex-direction:column;gap:10px}
+.bub{max-width:88%;padding:10px 14px;border-radius:14px;line-height:1.5}
+.bub.cl{background:var(--paper);border:1px solid var(--line);align-self:flex-start;border-bottom-left-radius:4px}
+.bub.ag{background:var(--teal-soft);align-self:flex-end;border-bottom-right-radius:4px}
+.bub .who{display:block;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);margin-bottom:2px;opacity:1}
+.coach{border-radius:12px;padding:10px 14px;font-size:.92rem}
+.coach.p10{background:var(--ok-soft)}.coach.p6{background:var(--sun-soft)}.coach.p3{background:var(--warn-soft)}.coach.p0{background:var(--bad-soft)}
+.coach b{margin-right:6px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opts button{text-align:left;background:var(--paper);border:1.5px solid var(--line);border-radius:12px;padding:11px 14px;font:500 .95rem/1.45 var(--f-body);color:var(--ink);cursor:pointer}
+.opts button:hover:not([disabled]){border-color:var(--teal)}
+.opts button[disabled]{cursor:default;opacity:.55}
+.opts button.pick{opacity:1;border-color:var(--teal);border-width:2px}
+.stepn{font-size:.8rem;color:var(--ink-2);font-weight:600}
+.crit{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;font-size:.92rem}
+.crit .v{font-weight:700;font-variant-numeric:tabular-nums}
+
 :root{--brand:#0b5d63}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#141f21;--paper:#1b2a2c;--line:#2c3f41;--teal:#5fa5a7;--teal-deep:#a3cfd0;--teal-soft:#1f3537;--sun:#d9b44a;--sun-soft:#352f1a;--brand:#0f4a4f}}
 :root[data-theme="dark"]{--bg:#141f21;--paper:#1b2a2c;--line:#2c3f41;--teal:#5fa5a7;--teal-deep:#a3cfd0;--teal-soft:#1f3537;--sun:#d9b44a;--sun-soft:#352f1a;--brand:#0f4a4f}
@@ -171,6 +194,7 @@ body.out main{display:flex;justify-content:center}
 </div>
 
 <script src="content.js"></script>
+<script src="sim.js"></script>
 <script>
 (function(){
 const C = window.CORSO;
@@ -233,10 +257,11 @@ function renderNav(){
     const lab= st.ok? (Math.round(st.best*100)+"%") : (un? "da fare":"bloccato");
     h+=`<button class="mod-link ${cls}" data-i="${i}" ${un?"":"disabled"} ${cur===i?'aria-current="true"':''}><span class="num">${st.ok?"✓":m.n}</span><span>${esc(m.titoloBreve||m.titolo)}</span><span class="st">${lab}</span></button>`;
   });
+  h+=`<h4>Allenamento</h4><button class="mod-link open" data-i="sim" ${cur==="sim"?'aria-current="true"':''}><span class="num">▶</span><span>Simulatore di trattativa</span><span class="st">${Object.keys(simBest).length}/${window.SIM.scenari.length}</span></button>`;
   h+='<h4>Materiali</h4>'+KIT.map(k=>`<a class="mod-link open" href="kit/${k[0]}" target="_blank" rel="noopener" style="text-decoration:none"><span class="num">↓</span><span>${esc(k[1])}</span><span class="st">PDF</span></a>`).join('');
   h+='<div class="sync'+(syncOk?'':' ko')+'" id="sync">'+(syncOk?'I risultati si salvano da soli':'Non salvato: riprovo appena torna la connessione')+'</div>';
   nav.innerHTML=h;
-  nav.querySelectorAll(".mod-link").forEach(b=>b.addEventListener("click",()=>{const v=b.dataset.i; go(v==="adm"?"adm":+v); nav.classList.remove("show"); document.getElementById("menuBtn").setAttribute("aria-expanded","false");}));
+  nav.querySelectorAll(".mod-link").forEach(b=>b.addEventListener("click",()=>{const v=b.dataset.i; go(v==="adm"||v==="sim"?v:+v); nav.classList.remove("show"); document.getElementById("menuBtn").setAttribute("aria-expanded","false");}));
   const d=doneCount();
   document.getElementById("progTxt").textContent=d+" di "+MODS.length+" superati";
   document.getElementById("progBar").style.width=(100*d/MODS.length)+"%";
@@ -330,10 +355,81 @@ async function renderAdmin(){
 }
 
 let cur=0;
-function go(i){cur=i; renderNav(); if(i==="adm") renderAdmin(); else renderModule(i); window.scrollTo({top:0}); try{localStorage.setItem(LSKEY+"-cur",String(i));}catch(e){}}
+function go(i){cur=i; renderNav(); if(i==="adm") renderAdmin(); else if(i==="sim") renderSim(); else renderModule(i); window.scrollTo({top:0}); try{localStorage.setItem(LSKEY+"-cur",String(i));}catch(e){}}
 
 document.getElementById("menuBtn").addEventListener("click",e=>{const n=document.getElementById("idx");n.classList.toggle("show");e.currentTarget.setAttribute("aria-expanded",n.classList.contains("show"));});
 
+
+
+/* ---------- simulatore di trattativa ---------- */
+const SIMD = window.SIM;
+const CODA_SIM = LSKEY + "-coda-sim";
+let simBest = {}; try{ simBest = JSON.parse(localStorage.getItem(LSKEY + "-simbest") || "{}"); }catch(e){}
+function saveBest(){ try{ localStorage.setItem(LSKEY + "-simbest", JSON.stringify(simBest)); }catch(e){} }
+function codaSim(){ try{ return JSON.parse(localStorage.getItem(CODA_SIM) || "[]"); }catch(e){ return []; } }
+function setCodaSim(c){ try{ localStorage.setItem(CODA_SIM, JSON.stringify(c)); }catch(e){} }
+async function flushSim(){
+  if(!codice) return; const c = codaSim();
+  try{ while(c.length){ const x = c[0]; const ok = await rpc("start_salva_sim", {p_codice: codice, p_scenario: x.s, p_punteggio: x.p, p_dettaglio: x.d}); if(ok === false) throw 0; c.shift(); setCodaSim(c); } }catch(e){ setSync(false, "Non salvato: riprovo appena torna la connessione"); }
+}
+async function caricaSimBest(){ if(!codice) return; try{ const r = await rpc("start_mie_sim", {p_codice: codice}); if(r){ for(const k in r){ const b = r[k]; if(!simBest[k] || b.best > simBest[k].best || b.n > simBest[k].n) simBest[k] = {best: Math.max(b.best, (simBest[k]||{}).best||0), n: Math.max(b.n, (simBest[k]||{}).n||0)}; } saveBest(); if(cur === "sim") renderSim(); } }catch(e){} }
+window.addEventListener("online", flushSim);
+function stelle(n){ return "●".repeat(n) + "○".repeat(3 - n); }
+function renderSim(){
+  const v = document.getElementById("view");
+  let h = `<div class="hero"><div class="eyebrow">Allenamento · ${SIMD.scenari.length} clienti simulati</div><h1>Simulatore di trattativa</h1><p class="sub">Scegli un cliente. A ogni passo leggi cosa dice e scegli la risposta tra 5. Dopo ogni scelta vedi come reagisce il cliente e il commento del coach. Alla fine hai un punteggio su 100: si supera da ${SIMD.soglia} in su. Le risposte cambiano ordine a ogni prova.</p></div>`;
+  h += `<div class="simlist">${SIMD.scenari.map(s => { const b = simBest[s.id]; return `<button class="simcard" data-s="${s.id}"><span class="m">${esc(s.tag)} · difficoltà ${stelle(s.diff)}</span><span class="t">${esc(s.titolo)}</span><span class="m">${esc(s.nome)} · ripasso: ${esc(s.modulo)}</span><span class="b ${b ? (b.best >= SIMD.soglia ? "" : "") : ""}" style="color:${b ? (b.best >= SIMD.soglia ? "var(--ok)" : "var(--bad)") : "var(--ink-2)"}">${b ? "Miglior punteggio " + b.best + "/100 · " + b.n + (b.n === 1 ? " prova" : " prove") : "Non ancora provato"}</span></button>`; }).join("")}</div>`;
+  v.innerHTML = h;
+  v.querySelectorAll(".simcard").forEach(b => b.addEventListener("click", () => playSim(b.dataset.s)));
+}
+let gioco = null;
+function mescola(n){ const a = [...Array(n).keys()]; for(let i = n - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function playSim(id){
+  const s = SIMD.scenari.find(x => x.id === id); gioco = {s, passo: 0, scelte: [], ordini: s.passi.map(p => mescola(p.o.length))};
+  disegnaGioco(); window.scrollTo({top: 0});
+}
+function nomeAg(){ const n=(state.nome||"").trim().split(/\s+/)[0]; return n||"Cristiano"; }
+function ag(t){ return esc(String(t).replace(/Cristiano/g, nomeAg())); }
+function lblPunti(p){ return p === 10 ? "Ottima" : p === 6 ? "Buona, ma…" : p === 3 ? "Debole" : "Sbagliata"; }
+function disegnaGioco(){
+  const g = gioco, s = g.s, v = document.getElementById("view");
+  let h = `<div class="row"><button class="btn sec" id="simback">← Tutti i clienti</button></div>`;
+  h += `<div class="hero"><div class="eyebrow">${esc(s.tag)} · ${esc(s.nome)}</div><h1>${esc(s.titolo)}</h1><p class="sub">${esc(s.brief)}</p></div><div class="chat">`;
+  g.scelte.forEach((oi, k) => { const p = s.passi[k], o = p.o[oi];
+    h += `<div class="bub cl"><span class="who">${esc(s.nome)}</span>${esc(p.cl)}</div><div class="bub ag"><span class="who">Tu</span>${ag(o[1])}</div><div class="bub cl"><span class="who">${esc(s.nome)}</span>${esc(o[2])}</div>`;
+    h += `<div class="coach p${o[0]}"><b>${lblPunti(o[0])} · ${o[0]}/10</b>${esc(o[3])}</div>`; });
+  const fine = g.scelte.length === s.passi.length;
+  if(!fine){
+    const k = g.scelte.length, p = s.passi[k];
+    h += `<div class="stepn">Passo ${k + 1} di ${s.passi.length} · ${esc(SIMD.criteri[p.c])}</div><div class="bub cl"><span class="who">${esc(s.nome)}</span>${esc(p.cl)}</div>`;
+    h += `<div class="opts" role="group" aria-label="Scegli la tua risposta">${g.ordini[k].map(oi => `<button data-o="${oi}">${ag(p.o[oi][1])}</button>`).join("")}</div>`;
+  }
+  h += `</div>`;
+  if(fine) h += risultatoSim();
+  v.innerHTML = h;
+  document.getElementById("simback").addEventListener("click", () => { gioco = null; renderSim(); window.scrollTo({top: 0}); });
+  v.querySelectorAll(".opts button").forEach(b => b.addEventListener("click", () => { g.scelte.push(+b.dataset.o); if(g.scelte.length === s.passi.length) chiudiSim(); disegnaGioco(); const c = v.querySelectorAll(".coach"); if(c.length) c[c.length - 1].scrollIntoView({behavior: "smooth", block: "center"}); }));
+  const r = document.getElementById("rifaiSim"); if(r) r.addEventListener("click", () => playSim(s.id));
+  const a = document.getElementById("altroSim"); if(a) a.addEventListener("click", () => { gioco = null; renderSim(); window.scrollTo({top: 0}); });
+}
+function calcolo(){ const g = gioco, s = g.s; let tot = 0; const cr = {};
+  g.scelte.forEach((oi, k) => { const p = s.passi[k], pt = p.o[oi][0]; tot += pt; cr[p.c] = cr[p.c] || [0, 0]; cr[p.c][0] += pt; cr[p.c][1] += 10; });
+  return {score: Math.round(100 * tot / (10 * s.passi.length)), cr}; }
+function chiudiSim(){
+  const g = gioco, s = g.s, {score} = calcolo();
+  const det = g.scelte.map((oi, k) => { const p = s.passi[k], o = p.o[oi], best = p.o.find(x => x[0] === 10); return {n: k + 1, c: p.c, punti: o[0], cliente: p.cl, scelta: o[1], migliore: best[1]}; });
+  const b = simBest[s.id] || {best: 0, n: 0}; simBest[s.id] = {best: Math.max(b.best, score), n: b.n + 1}; saveBest();
+  const c = codaSim(); c.push({s: s.id, p: score, d: det}); setCodaSim(c); flushSim();
+}
+function risultatoSim(){
+  const g = gioco, s = g.s, {score, cr} = calcolo(), ok = score >= SIMD.soglia;
+  const deboli = g.scelte.map((oi, k) => [k, oi]).filter(([k, oi]) => s.passi[k].o[oi][0] < 10);
+  let h = `<section class="quiz"><div><div class="eyebrow">Risultato</div><h2>${score}/100</h2></div><div class="result ${ok ? "pass" : "fail"}">${ok ? "Trattativa superata." : "Non ancora: rileggi i commenti e riprova."} Soglia ${SIMD.soglia}/100.</div>`;
+  h += `<div class="crit">${Object.keys(SIMD.criteri).filter(c => cr[c]).map(c => `<span>${esc(SIMD.criteri[c])}</span><span class="v">${cr[c][0]}/${cr[c][1]}</span>`).join("")}</div>`;
+  if(deboli.length) h += `<div><h3>Dove potevi fare meglio</h3><ol class="ask">${deboli.map(([k, oi]) => { const p = s.passi[k]; const best = p.o.find(x => x[0] === 10); return `<li><span><b>${esc(p.cl)}</b><br>La risposta migliore: «${ag(best[1])}»<br><span class="small">${esc(best[3])}</span></span></li>`; }).join("")}</ol></div>`;
+  h += `<p class="small">Ripasso consigliato: ${esc(s.modulo)} del corso.</p><div class="row"><button class="btn" id="rifaiSim">Rifai questa trattativa</button><button class="btn sec" id="altroSim">Scegli un altro cliente</button></div></section>`;
+  return h;
+}
 
 function showLogin(msg){
   document.body.classList.add("out");
@@ -352,11 +448,11 @@ function entra(r){
     for(const k in state.moduli){ if(!mm[k] || (state.moduli[k].best||0) > (mm[k].best||0) || (state.moduli[k].tent||0) > (mm[k].tent||0)) mm[k] = state.moduli[k]; }
     state.moduli = mm; if(!state.nome) state.nome = r.nome || ""; lsSave(); }
   document.getElementById("who").innerHTML = esc(state.nome || codice) + '<button type="button" id="esci">Esci</button>';
-  document.getElementById("esci").addEventListener("click", () => { if(!confirmEsci()) return; try{ localStorage.removeItem(LSKEY); localStorage.removeItem(LSKEY + "-codice"); localStorage.removeItem(LSKEY + "-cur"); localStorage.removeItem(CODA); }catch(x){} location.reload(); });
-  let s = 0; try{ const c = localStorage.getItem(LSKEY + "-cur"); if(c !== null && isUnlocked(+c)) s = +c; }catch(e){}
-  go(s); flush();
+  document.getElementById("esci").addEventListener("click", () => { if(!confirmEsci()) return; try{ localStorage.removeItem(LSKEY); localStorage.removeItem(LSKEY + "-codice"); localStorage.removeItem(LSKEY + "-cur"); localStorage.removeItem(CODA); localStorage.removeItem(CODA_SIM); localStorage.removeItem(LSKEY + "-simbest"); }catch(x){} location.reload(); });
+  let s = 0; try{ const c = localStorage.getItem(LSKEY + "-cur"); if(c === "sim") s = "sim"; else if(c !== null && !isNaN(+c) && isUnlocked(+c)) s = +c; }catch(e){}
+  go(s); flush(); flushSim(); caricaSimBest();
 }
-function confirmEsci(){ return coda().length === 0 || window.confirm("Alcuni test non sono ancora stati salvati online: se esci li perdi. Vuoi uscire lo stesso?"); }
+function confirmEsci(){ return (coda().length === 0 && codaSim().length === 0) || window.confirm("Alcuni test non sono ancora stati salvati online: se esci li perdi. Vuoi uscire lo stesso?"); }
 ls();
 try{ codice = localStorage.getItem(LSKEY + "-codice"); }catch(e){}
 if(!codice) showLogin();

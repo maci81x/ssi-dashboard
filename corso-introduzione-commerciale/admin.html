@@ -168,6 +168,7 @@ body.out main{display:flex;justify-content:center}
 <header class="top"><div class="brand"><span class="mark" aria-hidden="true">S</span>SSI Start · risultati</div><span style="flex:1"></span><button class="menu-btn" style="display:inline-block" id="out" hidden>Esci</button></header>
 <main class="adm-wrap" id="main"></main>
 <script src="content.js"></script>
+<script src="sim.js"></script>
 <script>
 
 const SB_URL = "https://ydoglnodmcuifefnsakt.supabase.co";
@@ -200,15 +201,18 @@ async function carica(){
     DATA = r; elenco();
   }catch(e){ login(/troppi/.test(e.message) ? "Troppi tentativi sbagliati: riprova tra 15 minuti." : "Non riesco a collegarmi. Riprova tra poco."); }
 }
+const SIMD = window.SIM;
+function simsOf(c){ return (DATA.simulazioni || []).filter(x => x.codice === c); }
+function simCell(c){ const ss = simsOf(c); if(!ss.length) return "–"; const best = {}; ss.forEach(x => { best[x.scenario] = Math.max(best[x.scenario] || 0, x.punteggio); }); const sup = Object.values(best).filter(v => v >= SIMD.soglia).length; return `<b>${sup}/${SIMD.scenari.length}</b><div class="small">${ss.length} prove</div>`; }
 function elenco(nuovo){
   document.getElementById("out").hidden = false;
   const ag = DATA.agenti;
   let h = `<div class="hero"><div class="eyebrow">Area direzione e capo area</div><h1>Risultati agenti</h1><p class="sub">Clicca il nome di un agente per vedere ogni tentativo e le domande sbagliate.</p></div>`;
   if(nuovo) h += `<div class="box vendita prose"><div class="bh">Agente creato</div><p>Codice di <b>${esc(nuovo[0])}</b>: <span class="code">${esc(nuovo[1])}</span></p><p>Mandagli il link <b>${esc(location.href.replace(/admin\.html.*$/,""))}</b> e questo codice. Al primo accesso lo inserisce una volta sola.</p></div>`;
   if(!ag.length) h += `<div class="panel"><p>Nessun agente ancora. Crea il primo qui sotto.</p></div>`;
-  else h += `<div class="panel"><div class="tw"><table class="m"><thead><tr><th>Agente</th><th>Superati</th>${MODS.map(m=>`<th>${lab(m)}</th>`).join("")}<th>Ultimo test</th></tr></thead><tbody>${ag.map((a,i)=>{
+  else h += `<div class="panel"><div class="tw"><table class="m"><thead><tr><th>Agente</th><th>Superati</th>${MODS.map(m=>`<th>${lab(m)}</th>`).join("")}<th>Simulatore</th><th>Ultimo test</th></tr></thead><tbody>${ag.map((a,i)=>{
     const mm = a.moduli || {}; const ok = MODS.filter(m => mm[m.id] && mm[m.id].ok).length;
-    return `<tr><td><button class="agbtn" data-i="${i}">${esc(a.nome)}</button><div class="small">${esc(a.codice)}${a.attivo?"":" · disattivato"}</div></td><td><b>${ok}/${MODS.length}</b></td>${MODS.map(m=>{const s=mm[m.id]; return `<td>${s&&s.tent?`<span class="${s.ok?"ok":"ko"}">${Math.round((s.best||0)*100)}%</span><div class="small">${s.tent}×</div>`:"–"}</td>`;}).join("")}<td class="small">${dt(a.aggiornato)||"mai"}</td></tr>`;}).join("")}</tbody></table></div><p class="small">Verde = superato (miglior punteggio). Rosso = non ancora superato. Il numero piccolo è quante volte ha fatto il test. Soglia ${Math.round(PASS*100)}%.</p></div>`;
+    return `<tr><td><button class="agbtn" data-i="${i}">${esc(a.nome)}</button><div class="small">${esc(a.codice)}${a.attivo?"":" · disattivato"}</div></td><td><b>${ok}/${MODS.length}</b></td>${MODS.map(m=>{const s=mm[m.id]; return `<td>${s&&s.tent?`<span class="${s.ok?"ok":"ko"}">${Math.round((s.best||0)*100)}%</span><div class="small">${s.tent}×</div>`:"–"}</td>`;}).join("")}<td>${simCell(a.codice)}</td><td class="small">${dt(a.aggiornato)||"mai"}</td></tr>`;}).join("")}</tbody></table></div><p class="small">Verde = superato (miglior punteggio). Rosso = non ancora superato. Il numero piccolo è quante volte ha fatto il test. Soglia ${Math.round(PASS*100)}%.</p></div>`;
   h += `<form class="panel" id="nf" style="display:flex;flex-direction:column;gap:10px"><h2>Nuovo agente</h2><p class="small">Crea il codice personale da dare all'agente.</p><div class="row"><input id="nn" placeholder="Nome e cognome" required style="flex:1;min-width:200px"><button class="btn" type="submit">Crea codice</button></div><p class="err" id="nerr"></p></form>`;
   main(h);
   document.querySelectorAll(".agbtn").forEach(b => b.addEventListener("click", () => dettaglio(+b.dataset.i)));
@@ -233,6 +237,14 @@ function dettaglio(i){
     });
     h += `</section>`;
   });
+  const ss = simsOf(a.codice);
+  h += `<section class="panel"><h3>Simulatore di trattativa</h3>`;
+  if(!ss.length) h += `<p class="small">Nessuna simulazione fatta.</p>`;
+  ss.forEach(x => { const sc = SIMD.scenari.find(s => s.id === x.scenario); const deb = (x.dettaglio || []).filter(d => d.punti < 10);
+    h += `<div class="att"><b class="${x.punteggio >= SIMD.soglia ? "ok" : "ko"}">${x.punteggio}/100</b> · ${esc(sc ? sc.titolo : x.scenario)} · ${dt(x.data)}`;
+    if(deb.length) h += `<ul>${deb.map(d => `<li><b>Passo ${d.n} · ${esc(SIMD.criteri[d.c] || d.c)} (${d.punti}/10)</b><br>Cliente: ${esc(d.cliente)}<br>Ha risposto: <span class="ko">${esc(d.scelta)}</span><br>Migliore: <span class="ok">${esc(d.migliore)}</span></li>`).join("")}</ul>`;
+    h += `</div>`; });
+  h += `</section>`;
   h += `<div class="panel"><h3>Accesso</h3><p class="small">${a.attivo?"Se disattivi il codice l'agente non può più salvare i test. I risultati restano qui.":"Codice disattivato."}</p><button class="btn sec" id="tog">${a.attivo?"Disattiva codice":"Riattiva codice"}</button></div>`;
   main(h); window.scrollTo({top:0});
   document.getElementById("back").addEventListener("click", () => elenco());
