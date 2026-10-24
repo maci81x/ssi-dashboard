@@ -1,0 +1,39 @@
+name: Pubblica il corso
+
+# 24/10 — Pages da «GitHub Actions» invece che «Deploy from a branch»: le pubblicazioni vanno IN FILA
+# (concurrency, cancel-in-progress: false), così due push ravvicinati non fanno più fallire il deploy
+# (23/10 sera, giro #25). Si pubblica una copia del repo senza .git e .github.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  pubblica:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.pubblica.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Copia i file del sito
+        run: |
+          mkdir -p _site
+          rsync -a --exclude .git --exclude .github --exclude _site ./ _site/
+          touch _site/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: pubblica
+        uses: actions/deploy-pages@v4
